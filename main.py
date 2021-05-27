@@ -13,6 +13,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 from numpy.core.defchararray import index
+from numpy.core.shape_base import block
 import controller2d
 import configparser 
 import local_planner
@@ -33,12 +34,18 @@ from carla.sensor import Camera
 from carla.image_converter import labels_to_array, depth_to_array, to_bgra_array
 from carla.planner.city_track import CityTrack
 
+# EditGroup2
+# Import aggiuntivi
+sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
+from yolo import YOLO
+import postprocessing
+# EndEditGroup2
 
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 7          #  spawn index for player
-DESTINATION_INDEX = 15        # Setting a Destination HERE
+PLAYER_START_INDEX = 13          #  spawn index for player
+DESTINATION_INDEX = 91        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 30      # total number of pedestrians to spawn
 NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
@@ -116,8 +123,8 @@ camera_parameters = {}
 camera_parameters['x'] = 1.8
 camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
-camera_parameters['width'] = 200
-camera_parameters['height'] = 200
+camera_parameters['width'] = 416
+camera_parameters['height'] = 416
 camera_parameters['fov'] = 90
 
 def rotate_x(angle):
@@ -205,6 +212,14 @@ def make_carla_settings(args):
     camera_fov = camera_parameters['fov']
 
     # Declare here your sensors
+    # EditGroup2
+    camera0 = Camera("CameraRGB")
+    camera0.set_image_size(camera_width, camera_height)
+    camera0.set(FOV=camera_fov)
+    camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
+
+    settings.add_sensor(camera0)
+    # EndEditGroup2
 
     return settings
 
@@ -761,9 +776,31 @@ def exec_waypoint_nav_demo(args):
         prev_collision_pedestrians = 0
         prev_collision_other       = 0
 
+        # EditGroup2
+        config_path = "./traffic_light_detection_module/config.json"
+        with open(config_path) as config_buffer:
+            config = json.loads(config_buffer.read())
+        traffic_light_detector = YOLO(config)
+        # EndEditGroup2
+
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
+
+            # EditGroup2
+            image_BGRA = to_bgra_array(sensor_data["CameraRGB"])
+            boxes = traffic_light_detector.predict(image_BGRA)
+            if len(boxes) > 0:
+                print("Sono stati visti semafori numero: ", len(boxes))
+            for box in boxes:
+                print(box.score)
+                print(box.label)
+                print("\n")
+                break
+            image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
+            #image_BGRA = cv2.resize(image_BGRA, (200, 200))
+            cv2.imshow("BGRA_IMAGE",image_BGRA)
+            # EndEditGroup2
 
             # UPDATE HERE the obstacles list
             obstacles = []
