@@ -781,6 +781,13 @@ def exec_waypoint_nav_demo(args):
         with open(config_path) as config_buffer:
             config = json.loads(config_buffer.read())
         traffic_light_detector = YOLO(config)
+
+        prev_semaphore_box = None
+        prev_semaphore_label = None
+        NUM_SEMAPHORE_CHECKS = 10
+        SCORE_THRESHOLD = 0.35
+        count_semaphore_detections = 0
+        th = int(0.05 * camera_parameters["width"])
         # EndEditGroup2
 
         for frame in range(TOTAL_EPISODE_FRAMES):
@@ -791,12 +798,39 @@ def exec_waypoint_nav_demo(args):
             image_BGRA = to_bgra_array(sensor_data["CameraRGB"])
             boxes = traffic_light_detector.predict(image_BGRA)
             if len(boxes) > 0:
-                print("Sono stati visti semafori numero: ", len(boxes))
-            for box in boxes:
-                print(box.score)
-                print(box.label)
-                print("\n")
-                break
+                current_box = boxes[0]
+
+                if current_box.get_score() > SCORE_THRESHOLD:
+                    
+                    # First time semaphore is detected
+                    if prev_semaphore_box == None:
+                        prev_semaphore_box = current_box
+                        count_semaphore_detections = 1
+                    else:
+                        # Check if the boxes refer to the same object
+                        xmin_diff = abs(current_box.xmin - prev_semaphore_box.xmin)
+                        xmax_diff = abs(current_box.xmax - prev_semaphore_box.xmax)
+                        ymin_diff = abs(current_box.ymin - prev_semaphore_box.ymin)
+                        ymax_diff = abs(current_box.ymax - prev_semaphore_box.ymax)
+
+                        if xmin_diff < th and xmax_diff < th and ymin_diff < th and ymax_diff < th:
+                            # the two boxes refer to the same object
+                            if current_box.get_label() == prev_semaphore_box.get_label():
+                                count_semaphore_detections += 1
+                            else:
+                                count_semaphore_detections = 1
+                        else:
+                            count_semaphore_detections = 1
+                        
+                        prev_semaphore_box = current_box
+            else:
+                prev_semaphore_box = None
+                count_semaphore_detections = 0      
+
+
+            if count_semaphore_detections == NUM_SEMAPHORE_CHECKS:
+                print("Semaforo rilevato! Stato semaforo: ", current_box.get_label())
+
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
             cv2.imshow("BGRA_IMAGE",image_BGRA)

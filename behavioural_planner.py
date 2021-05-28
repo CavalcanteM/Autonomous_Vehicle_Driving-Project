@@ -133,6 +133,88 @@ class BehaviouralPlanner:
         else:
             raise ValueError('Invalid state value.')
 
+    # EditGroup2
+    # Checks the given segment of the waypoint list to see if it
+    # intersects with a semaphore stop line. If any index does, return the
+    # new goal state accordingly.
+    def check_for_stop_signs(self, waypoints, closest_index, goal_index):
+        """Checks for a stop sign that is intervening the goal path.
+
+        Checks for a stop sign that is intervening the goal path. Returns a new
+        goal index (the current goal index is obstructed by a stop line), and a
+        boolean flag indicating if a stop sign obstruction was found.
+        
+        args:
+            waypoints: current waypoints to track. (global frame)
+                length and speed in m and m/s.
+                (includes speed to track at each x,y location.)
+                format: [[x0, y0, v0],
+                         [x1, y1, v1],
+                         ...
+                         [xn, yn, vn]]
+                example:
+                    waypoints[2][1]: 
+                    returns the 3rd waypoint's y position
+
+                    waypoints[5]:
+                    returns [x5, y5, v5] (6th waypoint)
+                closest_index: index of the waypoint which is closest to the vehicle.
+                    i.e. waypoints[closest_index] gives the waypoint closest to the vehicle.
+                goal_index (current): Current goal index for the vehicle to reach
+                    i.e. waypoints[goal_index] gives the goal waypoint
+        variables to set:
+            [goal_index (updated), stop_sign_found]: 
+                goal_index (updated): Updated goal index for the vehicle to reach
+                    i.e. waypoints[goal_index] gives the goal waypoint
+                stop_sign_found: Boolean flag for whether a stop sign was found or not
+        """
+        for i in range(closest_index, goal_index):
+            # Check to see if path segment crosses any of the stop lines.
+            intersect_flag = False
+            for key,stopsign_fence in enumerate(self._stopsign_fences):
+                if self._stopsign_visited[key]: continue
+
+                wp_1   = np.array(waypoints[i][0:2])
+                wp_2   = np.array(waypoints[i+1][0:2])
+                s_1    = np.array(stopsign_fence[0:2])
+                s_2    = np.array(stopsign_fence[2:4])
+
+                v1     = np.subtract(wp_2, wp_1)
+                v2     = np.subtract(s_1, wp_2)
+                sign_1 = np.sign(np.cross(v1, v2))
+                v2     = np.subtract(s_2, wp_2)
+                sign_2 = np.sign(np.cross(v1, v2))
+
+                v1     = np.subtract(s_2, s_1)
+                v2     = np.subtract(wp_1, s_2)
+                sign_3 = np.sign(np.cross(v1, v2))
+                v2     = np.subtract(wp_2, s_2)
+                sign_4 = np.sign(np.cross(v1, v2))
+
+                # Check if the line segments intersect.
+                if (sign_1 != sign_2) and (sign_3 != sign_4):
+                    intersect_flag = True
+
+                # Check if the collinearity cases hold.
+                if (sign_1 == 0) and pointOnSegment(wp_1, s_1, wp_2):
+                    intersect_flag = True
+                if (sign_2 == 0) and pointOnSegment(wp_1, s_2, wp_2):
+                    intersect_flag = True
+                if (sign_3 == 0) and pointOnSegment(s_1, wp_1, s_2):
+                    intersect_flag = True
+                if (sign_3 == 0) and pointOnSegment(s_1, wp_2, s_2):
+                    intersect_flag = True
+
+                # If there is an intersection with a stop line, update
+                # the goal state to stop before the goal line.
+                if intersect_flag:
+                    goal_index = i
+                    self._stopsign_visited[key] = True
+                    return goal_index, True
+
+        return goal_index, False
+    # EndEditGroup2
+
     # Gets the goal index in the list of waypoints, based on the lookahead and
     # the current ego state. In particular, find the earliest waypoint that has accumulated
     # arc length (including closest_len) that is greater than or equal to self._lookahead.
