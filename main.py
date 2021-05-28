@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import print_function
 from __future__ import division
+from traffic_light_detection_module.postprocessing import BoundBox
+from cutils import CUtils
 
 # System level imports
 import sys
@@ -145,6 +147,25 @@ def rotate_z(angle):
                  [         0,          0, 1 ]])
     return R
 
+# EditGroup2
+
+def to_rot(r):
+    Rx = np.mat([[ 1,         0,           0],
+                 [ 0, cos(r[0]), -sin(r[0]) ],
+                 [ 0, sin(r[0]),  cos(r[0]) ]])
+
+    Ry = np.mat([[ cos(r[1]), 0,  sin(r[1]) ],
+                 [ 0,         1,          0 ],
+                 [-sin(r[1]), 0,  cos(r[1]) ]])
+
+    Rz = np.mat([[ cos(r[2]), -sin(r[2]), 0 ],
+                 [ sin(r[2]),  cos(r[2]), 0 ],
+                 [         0,          0, 1 ]])
+
+    return Rz*Ry*Rx
+
+# EndEditGroup2
+
 # Transform the obstacle with its boundary point in the global frame
 def obstacle_to_world(location, dimensions, orientation):
     box_pts = []
@@ -219,6 +240,14 @@ def make_carla_settings(args):
     camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
 
     settings.add_sensor(camera0)
+
+    cameraDepth = Camera("CameraDepth", PostProcessing = "Depth")
+    cameraDepth.set_image_size(camera_width, camera_height)
+    cameraDepth.set(FOV=camera_fov)
+    cameraDepth.set_position(cam_x_pos, cam_y_pos, cam_height)
+
+    settings.add_sensor(cameraDepth)
+
     # EndEditGroup2
 
     return settings
@@ -782,8 +811,28 @@ def exec_waypoint_nav_demo(args):
             config = json.loads(config_buffer.read())
         traffic_light_detector = YOLO(config)
 
+        # Calculate Intrinsic Matrix
+        f = camera_parameters["width"] /(2 * tan(camera_parameters["fov"] * pi / 360))
+        Center_X = camera_parameters["width"] / 2.0
+        Center_Y = camera_parameters["height"] / 2.0
+
+        intrinsic_matrix = np.array([[f, 0, Center_X],
+                                     [0, f, Center_Y],
+                                     [0, 0, 1]])
+                                      
+        inv_intrinsic_matrix = np.linalg.inv(intrinsic_matrix)
+
+        # Rotation matrix to align image frame to camera frame
+        rotation_image_camera_frame = np.dot(rotate_z(-90 * pi /180),rotate_x(-90 * pi /180))
+
+        image_camera_frame = np.zeros((4,4))
+        image_camera_frame[:3,:3] = rotation_image_camera_frame
+        image_camera_frame[:, -1] = [0, 0, 0, 1]
+
+        # Lambda Function for transformation of image frame in camera frame 
+        image_to_camera_frame = lambda object_camera_frame: np.dot(image_camera_frame , object_camera_frame)
+
         prev_semaphore_box = None
-        prev_semaphore_label = None
         NUM_SEMAPHORE_CHECKS = 10
         SCORE_THRESHOLD = 0.35
         count_semaphore_detections = 0
@@ -808,10 +857,10 @@ def exec_waypoint_nav_demo(args):
                         count_semaphore_detections = 1
                     else:
                         # Check if the boxes refer to the same object
-                        xmin_diff = abs(current_box.xmin - prev_semaphore_box.xmin)
-                        xmax_diff = abs(current_box.xmax - prev_semaphore_box.xmax)
-                        ymin_diff = abs(current_box.ymin - prev_semaphore_box.ymin)
-                        ymax_diff = abs(current_box.ymax - prev_semaphore_box.ymax)
+                        xmin_diff = abs(camera_parameters["width"]*current_box.xmin - camera_parameters["width"]*prev_semaphore_box.xmin)
+                        xmax_diff = abs(camera_parameters["width"]*current_box.xmax - camera_parameters["width"]*prev_semaphore_box.xmax)
+                        ymin_diff = abs(camera_parameters["width"]*current_box.ymin - camera_parameters["width"]*prev_semaphore_box.ymin)
+                        ymax_diff = abs(camera_parameters["width"]*current_box.ymax - camera_parameters["width"]*prev_semaphore_box.ymax)
 
                         if xmin_diff < th and xmax_diff < th and ymin_diff < th and ymax_diff < th:
                             # the two boxes refer to the same object
@@ -837,11 +886,110 @@ def exec_waypoint_nav_demo(args):
 
             if count_semaphore_detections == NUM_SEMAPHORE_CHECKS:
                 print("Semaforo rilevato! Stato semaforo: ", current_box.get_label())
+
+                # location = CUtils()
+                # location.create_var('x', current_box.xmin)
+                # location.create_var('y', current_box.ymin)
+                # location.create_var('z', 0)
+
+
+                # dimensions = CUtils()
+                # dimensions.create_var('x', int(abs(current_box.xmax - current_box.xmin)))
+                # dimensions.create_var('y', int(abs(current_box.ymax - current_box.ymin)))
+                # dimensions.create_var('z', 0)
+                
+                # orientation = CUtils()
+                # orientation.create_var('yaw', 0)
+
+                # print(obstacle_to_world(location=location, dimensions=dimensions, orientation=orientation))
+
+                depth_data = sensor_data['CameraDepth']
+                depth_data = depth_to_array(depth_data)
+
+                print("Xmin ", camera_parameters["width"]*current_box.xmin)
+                print("Ymin ", camera_parameters["height"]*current_box.ymin)
+
+                xmin = camera_parameters["width"]*current_box.xmin
+                ymin = camera_parameters["height"]*current_box.ymin
+                xmax = camera_parameters["width"]*current_box.xmax
+                ymax = camera_parameters["height"]*current_box.ymax
+
+                x = int(xmin + (abs(xmax - xmin)/2))
+                y = int(ymin + (abs(ymax - ymin)/2))
+
+                print("X ", x)
+                print("Y ", y)
+                # From pixel to waypoint
+
+                pixel = [x , y, 1]
+                pixel = np.reshape(pixel, (3,1))
+                
+
+                # Projection Pixel to Image Frame
+                depth = depth_data[y][x] * 1000  # Consider depth in meters  
+                print("DEPTH ", depth)  
+
+                image_frame_vect = np.dot(inv_intrinsic_matrix, pixel) * depth
+                
+                # Create extended vector
+                image_frame_vect_extended = np.zeros((4,1))
+                image_frame_vect_extended[:3] = image_frame_vect 
+                image_frame_vect_extended[-1] = 1
+                
+                # Projection Camera to Vehicle Frame
+                camera_frame = image_to_camera_frame(image_frame_vect_extended)
+                camera_frame = camera_frame[:3]
+                camera_frame = np.asarray(np.reshape(camera_frame, (1,3)))
+
+                camera_frame_extended = np.zeros((4,1))
+                camera_frame_extended[:3] = camera_frame.T 
+                camera_frame_extended[-1] = 1
+
+                camera_to_vehicle_frame = np.zeros((4,4))
+                camera_to_vehicle_frame[:3,:3] = to_rot([0, 0, 0])
+                camera_to_vehicle_frame[:,-1] = [camera_parameters['x'], camera_parameters['y'], camera_parameters['z'], 1]
+
+                vehicle_frame = np.dot(camera_to_vehicle_frame,camera_frame_extended )
+                vehicle_frame = vehicle_frame[:3]
+                vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
+
+                print("VEHICLE FRAME")
+                print(vehicle_frame)
+
+                stopsign_data = CUtils()
+                stopsign_data.create_var('x', vehicle_frame[0][0])
+                stopsign_data.create_var('y', vehicle_frame[0][1])
+                stopsign_data.create_var('z', vehicle_frame[0][2])
+                stopsign_data.create_var('yaw', -90* np.pi / 180.0)
+                stopsign_fences = []     # [x0, y0, x1, y1]
+
+                # obtain stop sign fence points for LP
+                x = stopsign_data.x
+                y = stopsign_data.y
+                z = stopsign_data.z
+                yaw = stopsign_data.yaw + np.pi / 2.0  # add 90 degrees for fence
+                spos = np.array([
+                        [0, 0                       ],
+                        [0, 5]])
+                rotyaw = np.array([
+                        [np.cos(yaw), np.sin(yaw)],
+                        [-np.sin(yaw), np.cos(yaw)]])
+                spos_shift = np.array([
+                        [x, x],
+                        [y, y]])
+                spos = np.add(np.matmul(rotyaw, spos), spos_shift)
+                stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
+                print("FENCES")
+                print(stopsign_fences)
+
                 prev_semaphore_box = None
+
 
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
             cv2.imshow("BGRA_IMAGE",image_BGRA)
+            cv2.imshow("DEPTH", depth_to_array(sensor_data["CameraDepth"]))
+            
             # EndEditGroup2
 
             # UPDATE HERE the obstacles list
