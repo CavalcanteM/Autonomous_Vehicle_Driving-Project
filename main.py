@@ -787,7 +787,8 @@ def exec_waypoint_nav_demo(args):
         NUM_SEMAPHORE_CHECKS = 10
         SCORE_THRESHOLD = 0.35
         count_semaphore_detections = 0
-        th = int(0.05 * camera_parameters["width"])
+        count_missdetection = 0
+        th = int(0.10 * camera_parameters["width"])
         # EndEditGroup2
 
         for frame in range(TOTAL_EPISODE_FRAMES):
@@ -801,7 +802,6 @@ def exec_waypoint_nav_demo(args):
                 current_box = boxes[0]
 
                 if current_box.get_score() > SCORE_THRESHOLD:
-                    
                     # First time semaphore is detected
                     if prev_semaphore_box == None:
                         prev_semaphore_box = current_box
@@ -820,16 +820,24 @@ def exec_waypoint_nav_demo(args):
                             else:
                                 count_semaphore_detections = 1
                         else:
+                            print("threshold violata")
                             count_semaphore_detections = 1
-                        
-                        prev_semaphore_box = current_box
-            else:
-                prev_semaphore_box = None
-                count_semaphore_detections = 0      
 
+                        prev_semaphore_box = current_box
+
+                    count_missdetection = 0
+                else:
+                    count_missdetection += 1
+            else:
+                count_missdetection += 1
+                if count_missdetection == int(0.3*NUM_SEMAPHORE_CHECKS):
+                    prev_semaphore_box = None
+                    count_semaphore_detections = 0      
+                    count_missdetection = 0
 
             if count_semaphore_detections == NUM_SEMAPHORE_CHECKS:
                 print("Semaforo rilevato! Stato semaforo: ", current_box.get_label())
+                prev_semaphore_box = None
 
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
