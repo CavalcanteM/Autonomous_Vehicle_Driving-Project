@@ -22,9 +22,15 @@ class BehaviouralPlanner:
         self._goal_index                    = 0
         self._stop_count                    = 0
         self._lookahead_collision_index     = 0
+        self._stopsign_fences               = []
     
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
+
+    def add_stopsign_fences(self, stopsign_fences):
+        self._stopsign_fences.clear()
+        for fence in stopsign_fences:
+            self._stopsign_fences.append(fence)
 
     # Handles state transitions and computes the goal state.
     def transition_state(self, waypoints, ego_state, closed_loop_speed):
@@ -88,10 +94,13 @@ class BehaviouralPlanner:
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
+            goal_index, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
             self._goal_index = goal_index
             self._goal_state = waypoints[goal_index]
             
-
+            if stop_sign_found: 
+                self._goal_state[2] = 0
+                self._state = DECELERATE_TO_STOP
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
@@ -171,14 +180,18 @@ class BehaviouralPlanner:
         for i in range(closest_index, goal_index):
             # Check to see if path segment crosses any of the stop lines.
             intersect_flag = False
-            for key,stopsign_fence in enumerate(self._stopsign_fences):
-                if self._stopsign_visited[key]: continue
+            for stopsign_fence in self._stopsign_fences:
 
                 wp_1   = np.array(waypoints[i][0:2])
                 wp_2   = np.array(waypoints[i+1][0:2])
                 s_1    = np.array(stopsign_fence[0:2])
                 s_2    = np.array(stopsign_fence[2:4])
-
+                # print("****************")
+                # print(wp_1)
+                # print(wp_2)
+                # print(s_1)
+                # print(s_2)
+                # print("****************")
                 v1     = np.subtract(wp_2, wp_1)
                 v2     = np.subtract(s_1, wp_2)
                 sign_1 = np.sign(np.cross(v1, v2))
@@ -207,9 +220,10 @@ class BehaviouralPlanner:
 
                 # If there is an intersection with a stop line, update
                 # the goal state to stop before the goal line.
+                
                 if intersect_flag:
+                    print("Intersect ", intersect_flag)
                     goal_index = i
-                    self._stopsign_visited[key] = True
                     return goal_index, True
 
         return goal_index, False

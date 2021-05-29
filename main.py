@@ -46,10 +46,12 @@ import postprocessing
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 13          #  spawn index for player
+PLAYER_START_INDEX = 13          #  spawn index for player 13 default
 DESTINATION_INDEX = 91        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 30      # total number of pedestrians to spawn
-NUM_VEHICLES           = 30      # total number of vehicles to spawn
+# PLAYER_START_INDEX = 93          #  spawn index for player
+# DESTINATION_INDEX = 56        # Setting a Destination HERE
+NUM_PEDESTRIANS        = 1      # total number of pedestrians to spawn
+NUM_VEHICLES           = 1      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -885,7 +887,6 @@ def exec_waypoint_nav_demo(args):
                     count_missdetection = 0
 
             if count_semaphore_detections == NUM_SEMAPHORE_CHECKS:
-                print("Semaforo rilevato! Stato semaforo: ", current_box.get_label())
 
                 # location = CUtils()
                 # location.create_var('x', current_box.xmin)
@@ -906,19 +907,31 @@ def exec_waypoint_nav_demo(args):
                 depth_data = sensor_data['CameraDepth']
                 depth_data = depth_to_array(depth_data)
 
-                print("Xmin ", camera_parameters["width"]*current_box.xmin)
-                print("Ymin ", camera_parameters["height"]*current_box.ymin)
-
                 xmin = camera_parameters["width"]*current_box.xmin
                 ymin = camera_parameters["height"]*current_box.ymin
                 xmax = camera_parameters["width"]*current_box.xmax
                 ymax = camera_parameters["height"]*current_box.ymax
 
-                x = int(xmin + (abs(xmax - xmin)/2))
-                y = int(ymin + (abs(ymax - ymin)/2))
+                # x = int(xmin + (abs(xmax - xmin)/2))
+                # y = int(ymin + (abs(ymax - ymin)/2))
 
-                print("X ", x)
-                print("Y ", y)
+                xmin = xmin - (xmax-xmin)
+                xmax = xmax + (xmax-xmin)
+                ymin = ymin - (ymax-ymin)
+                ymax = ymax + (ymax-ymin)
+
+                # From pixel to waypoint
+                depth = 1000 #Distance of the sky
+                for i in range(int(xmin), int(xmax+1)):
+                    for j in range(int(ymin), int(ymax+1)):
+                        if j < 416 and i < 416:
+                            if depth > depth_data[j][i]:
+                                # Projection Pixel to Image Frame
+                                y = j
+                                x = i
+                                depth = depth_data[y][x] * 1000  # Consider depth in meters
+
+
                 # From pixel to waypoint
 
                 pixel = [x , y, 1]
@@ -927,63 +940,83 @@ def exec_waypoint_nav_demo(args):
 
                 # Projection Pixel to Image Frame
                 depth = depth_data[y][x] * 1000  # Consider depth in meters  
-                print("DEPTH ", depth)  
-
-                image_frame_vect = np.dot(inv_intrinsic_matrix, pixel) * depth
-                
-                # Create extended vector
-                image_frame_vect_extended = np.zeros((4,1))
-                image_frame_vect_extended[:3] = image_frame_vect 
-                image_frame_vect_extended[-1] = 1
-                
-                # Projection Camera to Vehicle Frame
-                camera_frame = image_to_camera_frame(image_frame_vect_extended)
-                camera_frame = camera_frame[:3]
-                camera_frame = np.asarray(np.reshape(camera_frame, (1,3)))
-
-                camera_frame_extended = np.zeros((4,1))
-                camera_frame_extended[:3] = camera_frame.T 
-                camera_frame_extended[-1] = 1
-
-                camera_to_vehicle_frame = np.zeros((4,4))
-                camera_to_vehicle_frame[:3,:3] = to_rot([0, 0, 0])
-                camera_to_vehicle_frame[:,-1] = [camera_parameters['x'], camera_parameters['y'], camera_parameters['z'], 1]
-
-                vehicle_frame = np.dot(camera_to_vehicle_frame,camera_frame_extended )
-                vehicle_frame = vehicle_frame[:3]
-                vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
-
-                print("VEHICLE FRAME")
-                print(vehicle_frame)
-
-                stopsign_data = CUtils()
-                stopsign_data.create_var('x', vehicle_frame[0][0])
-                stopsign_data.create_var('y', vehicle_frame[0][1])
-                stopsign_data.create_var('z', vehicle_frame[0][2])
-                stopsign_data.create_var('yaw', -90* np.pi / 180.0)
                 stopsign_fences = []     # [x0, y0, x1, y1]
+                if depth != 1000.0:
 
-                # obtain stop sign fence points for LP
-                x = stopsign_data.x
-                y = stopsign_data.y
-                z = stopsign_data.z
-                yaw = stopsign_data.yaw + np.pi / 2.0  # add 90 degrees for fence
-                spos = np.array([
-                        [0, 0                       ],
-                        [0, 5]])
-                rotyaw = np.array([
-                        [np.cos(yaw), np.sin(yaw)],
-                        [-np.sin(yaw), np.cos(yaw)]])
-                spos_shift = np.array([
-                        [x, x],
-                        [y, y]])
-                spos = np.add(np.matmul(rotyaw, spos), spos_shift)
-                stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
-                print("FENCES")
-                print(stopsign_fences)
+                    image_frame_vect = np.dot(inv_intrinsic_matrix, pixel) * depth
+                    
+                    # Create extended vector
+                    image_frame_vect_extended = np.zeros((4,1))
+                    image_frame_vect_extended[:3] = image_frame_vect 
+                    image_frame_vect_extended[-1] = 1
+                    
+                    # Projection Camera to Vehicle Frame
+                    camera_frame = image_to_camera_frame(image_frame_vect_extended)
+                    camera_frame = camera_frame[:3]
+                    camera_frame = np.asarray(np.reshape(camera_frame, (1,3)))
 
-                prev_semaphore_box = None
+                    camera_frame_extended = np.zeros((4,1))
+                    camera_frame_extended[:3] = camera_frame.T 
+                    camera_frame_extended[-1] = 1
 
+                    camera_to_vehicle_frame = np.zeros((4,4))
+                    camera_to_vehicle_frame[:3,:3] = to_rot([0, 0, 0])
+                    camera_to_vehicle_frame[:,-1] = [camera_parameters['x'], camera_parameters['y'], camera_parameters['z'], 1]
+
+                    vehicle_frame = np.dot(camera_to_vehicle_frame,camera_frame_extended )
+                    vehicle_frame = vehicle_frame[:3]
+                    vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
+
+                    stopsign_data = CUtils()
+                    stopsign_data.create_var('x', vehicle_frame[0][0])
+                    stopsign_data.create_var('y', vehicle_frame[0][1])
+                    stopsign_data.create_var('z', vehicle_frame[0][2])
+                    stopsign_data.create_var('yaw', -90 * (int(round(abs(cos(current_yaw))))) * np.pi / 180.0)
+
+                    current_x, current_y, _, _, _, current_yaw = \
+                        get_current_pose(measurement_data)
+
+                    # obtain stop sign fence points for LP
+                    x = stopsign_data.x
+                    y = stopsign_data.y
+                    z = stopsign_data.z
+                    yaw = stopsign_data.yaw + np.pi / 2.0  # add 90 degrees for fence
+
+                    # print("CHECK")
+                    # print(int(round(abs(sin(current_yaw)))))
+                    # print(int(round(abs(cos(current_yaw)))))
+                    spos = np.array([
+                            [current_x-5*int(round(abs(sin(current_yaw)))), current_x+5*int(round(abs(sin(current_yaw))))],
+                            [current_y-5*int(round(abs(cos(current_yaw)))), current_y+5*int(round(abs(cos(current_yaw))))]])
+                    # spos = np.array([
+                    #         [current_x, current_x],
+                    #         [current_y-5*int(round(abs(cos(current_yaw)))), current_y+5*int(round(abs(cos(current_yaw))))]])
+                    rotyaw = np.array([
+                            [np.cos(yaw), np.sin(yaw)],
+                            [-np.sin(yaw), np.cos(yaw)]])
+                    spos_shift = np.array([
+                            [x, x],
+                            [y, y]])
+
+                    if np.sign(round(np.cos(current_yaw))) > 0:
+                        print("1")
+                        spos = np.add(np.matmul(rotyaw, spos), spos_shift)
+                    elif np.sign(round(np.cos(current_yaw))) < 0:
+                        print("2")
+                        spos = np.subtract(np.matmul(rotyaw, spos), spos_shift)
+                    else:
+                        if np.sign(round(np.sin(current_yaw))) > 0:
+                            print("3")
+                            spos = np.subtract(np.matmul(rotyaw, spos), spos_shift)
+                        else:
+                            print("4")
+                            spos = np.add(np.matmul(rotyaw, spos), spos_shift)
+                    stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
+                    print("FENCES")
+                    print(stopsign_fences)
+
+                    
+                    prev_semaphore_box = None
 
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
@@ -1041,9 +1074,10 @@ def exec_waypoint_nav_demo(args):
                 # Calculate the goal state set in the local frame for the local planner.
                 # Current speed should be open loop for the velocity profile generation.
                 ego_state = [current_x, current_y, current_yaw, open_loop_speed]
-
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
+
+                bp.add_stopsign_fences(stopsign_fences)
 
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
@@ -1134,7 +1168,7 @@ def exec_waypoint_nav_demo(args):
                 pass
             elif local_waypoints == None:
                 pass
-            else:
+            elif enable_live_plot:
                 # Update live plotter with new feedback
                 trajectory_fig.roll("trajectory", current_x, current_y)
                 trajectory_fig.roll("car", current_x, current_y)
@@ -1187,7 +1221,6 @@ def exec_waypoint_nav_demo(args):
                         wp_interp_np[path_indices.astype(int), 0],
                         wp_interp_np[path_indices.astype(int), 1],
                         new_colour=[1, 0.5, 0.0])
-
 
                 # Refresh the live plot based on the refresh rate 
                 # set by the options
