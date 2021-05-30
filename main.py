@@ -298,7 +298,9 @@ def get_current_pose(measurement):
         x: X position in meters
         y: Y position in meters
         yaw: Yaw position in radians
+
     """
+
     x   = measurement.player_measurements.transform.location.x
     y   = measurement.player_measurements.transform.location.y
     z   =  measurement.player_measurements.transform.location.z
@@ -967,11 +969,15 @@ def exec_waypoint_nav_demo(args):
                     vehicle_frame = vehicle_frame[:3]
                     vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
 
+
                     stopsign_data = CUtils()
-                    stopsign_data.create_var('x', vehicle_frame[0][0])
-                    stopsign_data.create_var('y', vehicle_frame[0][1])
+                    if (int(round(abs(cos(current_yaw))))):
+                        stopsign_data.create_var('x', vehicle_frame[0][0])
+                        stopsign_data.create_var('y', vehicle_frame[0][1])
+                    else:
+                        stopsign_data.create_var('x', vehicle_frame[0][1])
+                        stopsign_data.create_var('y', vehicle_frame[0][0])
                     stopsign_data.create_var('z', vehicle_frame[0][2])
-                    stopsign_data.create_var('yaw', -90 * (int(round(abs(cos(current_yaw))))) * np.pi / 180.0)
 
                     current_x, current_y, _, _, _, current_yaw = \
                         get_current_pose(measurement_data)
@@ -979,38 +985,31 @@ def exec_waypoint_nav_demo(args):
                     # obtain stop sign fence points for LP
                     x = stopsign_data.x
                     y = stopsign_data.y
-                    z = stopsign_data.z
-                    yaw = stopsign_data.yaw + np.pi / 2.0  # add 90 degrees for fence
 
-                    # print("CHECK")
-                    # print(int(round(abs(sin(current_yaw)))))
-                    # print(int(round(abs(cos(current_yaw)))))
+                    print("CHECK")
+                    print(int(round(abs(sin(current_yaw)))))
+                    print(int(round(abs(cos(current_yaw)))))
+
                     spos = np.array([
                             [current_x-5*int(round(abs(sin(current_yaw)))), current_x+5*int(round(abs(sin(current_yaw))))],
                             [current_y-5*int(round(abs(cos(current_yaw)))), current_y+5*int(round(abs(cos(current_yaw))))]])
                     # spos = np.array([
                     #         [current_x, current_x],
                     #         [current_y-5*int(round(abs(cos(current_yaw)))), current_y+5*int(round(abs(cos(current_yaw))))]])
-                    rotyaw = np.array([
-                            [np.cos(yaw), np.sin(yaw)],
-                            [-np.sin(yaw), np.cos(yaw)]])
                     spos_shift = np.array([
                             [x, x],
                             [y, y]])
 
-                    if np.sign(round(np.cos(current_yaw))) > 0:
-                        print("1")
-                        spos = np.add(np.matmul(rotyaw, spos), spos_shift)
-                    elif np.sign(round(np.cos(current_yaw))) < 0:
-                        print("2")
-                        spos = np.subtract(np.matmul(rotyaw, spos), spos_shift)
+                    if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                        spos = np.add(spos, spos_shift)
+                    elif np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x negative, verso sinistra
+                        spos = np.subtract(spos, spos_shift)
                     else:
-                        if np.sign(round(np.sin(current_yaw))) > 0:
-                            print("3")
-                            spos = np.subtract(np.matmul(rotyaw, spos), spos_shift)
+                        if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                            spos = np.add(spos, spos_shift)
                         else:
-                            print("4")
-                            spos = np.add(np.matmul(rotyaw, spos), spos_shift)
+                            spos = np.subtract(spos, spos_shift)
+
                     stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
                     print("FENCES")
                     print(stopsign_fences)
