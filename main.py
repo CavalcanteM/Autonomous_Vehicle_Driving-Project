@@ -969,6 +969,8 @@ def exec_waypoint_nav_demo(args):
                     vehicle_frame = vehicle_frame[:3]
                     vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
 
+                    current_x, current_y, _, _, _, current_yaw = \
+                        get_current_pose(measurement_data)
 
                     stopsign_data = CUtils()
                     if (int(round(abs(cos(current_yaw))))):
@@ -978,9 +980,6 @@ def exec_waypoint_nav_demo(args):
                         stopsign_data.create_var('x', vehicle_frame[0][1])
                         stopsign_data.create_var('y', vehicle_frame[0][0])
                     stopsign_data.create_var('z', vehicle_frame[0][2])
-
-                    current_x, current_y, _, _, _, current_yaw = \
-                        get_current_pose(measurement_data)
 
                     # obtain stop sign fence points for LP
                     x = stopsign_data.x
