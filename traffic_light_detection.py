@@ -7,7 +7,8 @@ from cutils import CUtils
 #   Required to import carla library
 import os
 import sys
-sys.path.append(os.path.abspath(sys.path[0] + '/..'))
+sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
+from yolo import YOLO
 
 # Utils : X - Rotation
 def rotate_x(angle):
@@ -47,11 +48,14 @@ def to_rot(r):
     return Rz*Ry*Rx
 
 class TrafficLightDetection:
-    def __init__(self, camera_parameters):
+    def __init__(self, camera_parameters, config):
         # Constants
         self.NUM_SEMAPHORE_CHECKS = 10
         self.SCORE_THRESHOLD = 0.35
         
+        #Detector
+        self.traffic_light_detector = YOLO(config)
+
         # Detection parameters
         self.prev_semaphore_box = None
         self.count_semaphore_detections = 0
@@ -62,10 +66,6 @@ class TrafficLightDetection:
         self.cam_height = camera_parameters['z']
         self.cam_x_pos = camera_parameters['x']
         self.cam_y_pos = camera_parameters['y']
-
-        self.cam_yaw = camera_parameters['yaw'] 
-        self.cam_pitch = camera_parameters['pitch'] 
-        self.cam_roll = camera_parameters['roll']
         
         self.camera_width = camera_parameters['width']
         self.camera_height = camera_parameters['height']
@@ -94,8 +94,8 @@ class TrafficLightDetection:
         self.image_to_camera_frame = lambda object_camera_frame: np.dot(image_camera_frame, object_camera_frame)
 
     
-    def detect(self, traffic_light_detector, image, ):
-        boxes = traffic_light_detector.predict(image)
+    def detect(self, image):
+        boxes = self.traffic_light_detector.predict(image)
         if len(boxes) > 0:
             current_box = boxes[0]
 
@@ -133,15 +133,16 @@ class TrafficLightDetection:
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
 
-        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS:
-            # TODO: pass depth camera data from the main
-            depth_data = sensor_data['CameraDepth']
-            depth_data = depth_to_array(depth_data)
+        return self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS, boxes
+           
 
-            xmin = self.camera_width*current_box.xmin
-            ymin = self.camera_height*current_box.ymin
-            xmax = self.camera_width*current_box.xmax
-            ymax = self.camera_height*current_box.ymax
+    def get_traffic_light_fences(self, depth_data, current_x, current_y, current_yaw):
+        traffic_light_fences = []     # [x0, y0, x1, y1]
+        if self.prev_semaphore_box is not None:
+            xmin = self.camera_width*self.prev_semaphore_box.xmin
+            ymin = self.camera_height*self.prev_semaphore_box.ymin
+            xmax = self.camera_width*self.prev_semaphore_box.xmax
+            ymax = self.camera_height*self.prev_semaphore_box.ymax
 
             xmin = xmin - (xmax-xmin)
             xmax = xmax + (xmax-xmin)
@@ -152,7 +153,7 @@ class TrafficLightDetection:
             depth = 1000 #Distance of the sky
             for i in range(int(xmin), int(xmax+1)):
                 for j in range(int(ymin), int(ymax+1)):
-                    if j < 416 and i < 416:
+                    if j < self.camera_height and i < self.camera_width:
                         if depth > depth_data[j][i]:
                             # Projection Pixel to Image Frame
                             y = j
@@ -167,7 +168,6 @@ class TrafficLightDetection:
 
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
-            stopsign_fences = []     # [x0, y0, x1, y1]
             if depth != 1000.0:
 
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
@@ -193,10 +193,6 @@ class TrafficLightDetection:
                 vehicle_frame = np.dot(camera_to_vehicle_frame, camera_frame_extended)
                 vehicle_frame = vehicle_frame[:3]
                 vehicle_frame = np.asarray(np.reshape(vehicle_frame, (1,3)))
-                
-                # TODO: call from the main
-                current_x, current_y, _, _, _, current_yaw = \
-                    get_current_pose(measurement_data)
 
                 stopsign_data = CUtils()
                 if (int(round(abs(cos(current_yaw))))):
@@ -217,19 +213,28 @@ class TrafficLightDetection:
                 spos_shift = np.array([
                         [x, x],
                         [y, y]])
+                before = np.array([
+                        [5*int(round(abs(cos(current_yaw)))),5*int(round(abs(cos(current_yaw))))],
+                        [5*int(round(abs(sin(current_yaw)))),5*int(round(abs(sin(current_yaw))))]])
 
                 if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
                     spos = np.add(spos, spos_shift)
+                    # spos = np.subtract(spos, before)
                 elif np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x negative, verso sinistra
                     spos = np.subtract(spos, spos_shift)
+                    # spos = np.add(spos,before)
                 else:
                     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
                         spos = np.add(spos, spos_shift)
+                        # spos = np.subtract(spos, before)
                     else:
                         spos = np.subtract(spos, spos_shift)
+                        # spos = np.add(spos, before)
 
-                stopsign_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
+                traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
                 print("FENCES")
-                print(stopsign_fences)
+                print(traffic_light_fences)
 
                 self.prev_semaphore_box = None
+
+        return traffic_light_fences

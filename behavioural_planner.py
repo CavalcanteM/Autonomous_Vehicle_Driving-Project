@@ -28,7 +28,7 @@ class BehaviouralPlanner:
         self._lookahead = lookahead
 
     def add_stopsign_fences(self, stopsign_fences):
-        self._stopsign_fences.clear()
+        # self._stopsign_fences.clear()
         for fence in stopsign_fences:
             self._stopsign_fences.append(fence)
 
@@ -269,6 +269,7 @@ class BehaviouralPlanner:
         # lookahead distance of the ego vehicle.
         # Take the distance from the ego vehicle to the closest waypoint into
         # consideration.
+
         arc_length = closest_len
         wp_index = closest_index
 
