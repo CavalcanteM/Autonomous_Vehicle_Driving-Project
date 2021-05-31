@@ -51,7 +51,7 @@ class TrafficLightDetection:
     def __init__(self, camera_parameters, config):
         # Constants
         self.NUM_SEMAPHORE_CHECKS = 13
-        self.SCORE_THRESHOLD = 0.35
+        self.SCORE_THRESHOLD = 0.20
         
         #Detector
         self.traffic_light_detector = YOLO(config)
@@ -237,17 +237,24 @@ class TrafficLightDetection:
                         [5*int(round(abs(cos(current_yaw)))),5*int(round(abs(cos(current_yaw))))],
                         [5*int(round(abs(sin(current_yaw)))),5*int(round(abs(sin(current_yaw))))]])
 
+                print("cos sin")
+                print(np.sign(round(np.cos(current_yaw))))
+                print(np.sign(round(np.sin(current_yaw))))
                 if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                    print("x+")
                     spos = np.add(spos, spos_shift)
                     # spos = np.subtract(spos, before)
-                elif np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x negative, verso sinistra
+                elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
+                    print("x-")
                     spos = np.subtract(spos, spos_shift)
                     # spos = np.add(spos,before)
                 else:
                     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                        print("y+")
                         spos = np.add(spos, spos_shift)
                         # spos = np.subtract(spos, before)
                     else:
+                        print("y-")
                         spos = np.subtract(spos, spos_shift)
                         # spos = np.add(spos, before)
 
