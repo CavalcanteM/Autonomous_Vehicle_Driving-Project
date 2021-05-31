@@ -104,6 +104,17 @@ class BehaviouralPlanner:
             
             self._goal_state = waypoints[goal_index]
             if stop_sign_found: 
+                wp = waypoints[goal_index-1]
+                if abs(self._goal_state[1] - wp[1]) < 0.5: # ti stai spostando lungo x
+                    if np.sign(self._goal_state[0] - wp[0]) > 0: # ti stai spostando lungo x positive
+                        self._goal_state[0] -= 2
+                    else: # ti stai spostando lungo x negative
+                        self._goal_state[0] += 2
+                else: # ti stai spostando lungo y
+                    if np.sign(self._goal_state[1] - wp[1]) > 0: # ti stai spostando lungo y positive
+                        self._goal_state[1] -= 2
+                    else: # ti stai spostando lungo y negative
+                        self._goal_state[0] += 2
                 self._goal_state[2] = 0
                 self._state = DECELERATE_TO_STOP
                 print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
