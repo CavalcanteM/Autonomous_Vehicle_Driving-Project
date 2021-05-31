@@ -7,7 +7,7 @@ FOLLOW_LANE = 0
 DECELERATE_TO_STOP = 1
 STAY_STOPPED = 2
 # Stop speed threshold
-STOP_THRESHOLD = 0.03
+STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
 STOP_COUNTS = 10
 
@@ -111,7 +111,10 @@ class BehaviouralPlanner:
         # state.
         elif self._state == DECELERATE_TO_STOP:
             #print("DECELERATE_TO_STOP")
-            if abs(closed_loop_speed) <= STOP_THRESHOLD:
+            if self._is_traffic_light_green:
+                self._stopsign_fences.clear()
+                self._state = FOLLOW_LANE
+            elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
 

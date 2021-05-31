@@ -133,7 +133,11 @@ class TrafficLightDetection:
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
 
-        return self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS, boxes
+        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS:
+            self.count_semaphore_detections = 0
+            self.count_missdetection = 0
+            return True, boxes
+        return False, boxes
            
 
     def get_traffic_light_fences(self, depth_data, current_x, current_y, current_yaw):
@@ -196,11 +200,11 @@ class TrafficLightDetection:
 
                 stopsign_data = CUtils()
                 if (int(round(abs(cos(current_yaw))))):
-                    stopsign_data.create_var('x', vehicle_frame[0][0])
+                    stopsign_data.create_var('x', vehicle_frame[0][0]-self.cam_x_pos)
                     stopsign_data.create_var('y', vehicle_frame[0][1])
                 else:
                     stopsign_data.create_var('x', vehicle_frame[0][1])
-                    stopsign_data.create_var('y', vehicle_frame[0][0])
+                    stopsign_data.create_var('y', vehicle_frame[0][0]-self.cam_x_pos)
                 stopsign_data.create_var('z', vehicle_frame[0][2])
 
                 # obtain stop sign fence points for LP
