@@ -137,7 +137,9 @@ class TrafficLightDetection:
                 self.count_missdetection += 1
         else:
             self.count_missdetection += 1
-            if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
+
+        if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
+                print("missdetection")
                 self.prev_semaphore_box = None
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
