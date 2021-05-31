@@ -23,9 +23,13 @@ class BehaviouralPlanner:
         self._stop_count                    = 0
         self._lookahead_collision_index     = 0
         self._stopsign_fences               = []
+        self._is_traffic_light_green        = True
     
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
+
+    def set_is_traffic_light_green(self, value):
+        self._is_traffic_light_green = value
 
     def add_stopsign_fences(self, stopsign_fences):
         # self._stopsign_fences.clear()
@@ -116,29 +120,29 @@ class BehaviouralPlanner:
         # the stop sign and transition to the next state.
         elif self._state == STAY_STOPPED:
             #print("STAY_STOPPED")
-            # We have stayed stopped for the required number of cycles.
-            # Allow the ego vehicle to leave the stop sign. Once it has
-            # passed the stop sign, return to lane following.
+            # Allow the ego vehicle to leave the traffic light. Once it has
+            # passed the traffic light, return to lane following.
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            self._stopsign_fences.clear()
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-            while waypoints[goal_index][2] <= 0.1: goal_index += 1
+            if self._is_traffic_light_green: 
+                self._stopsign_fences.clear()
+                closest_len, closest_index = get_closest_index(waypoints, ego_state)
+                goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
-            # We've stopped for the required amount of time, so the new goal 
-            # index for the stop line is not relevant. Use the goal index
-            # that is the lookahead distance away. 
-                            
-            self._goal_index = goal_index
-            self._goal_state = waypoints[goal_index]
+                # We've stopped for the required amount of time, so the new goal 
+                # index for the stop line is not relevant. Use the goal index
+                # that is the lookahead distance away. 
+                                
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
 
-            # If the stop sign is no longer along our path, we can now
-            # transition back to our lane following state.
-            
-            #if not stop_sign_found: self._state = FOLLOW_LANE
+                # If the stop sign is no longer along our path, we can now
+                # transition back to our lane following state.
+                
+                #if not stop_sign_found: self._state = FOLLOW_LANE
 
-            self._state = FOLLOW_LANE
+                self._state = FOLLOW_LANE
                 
         else:
             raise ValueError('Invalid state value.')

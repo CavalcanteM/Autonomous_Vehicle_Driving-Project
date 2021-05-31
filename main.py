@@ -829,11 +829,15 @@ def exec_waypoint_nav_demo(args):
 
             if not traffic_light_detected:
                 traffic_light_fences = []
+            elif boxes[0].get_label() == 0: #go
+                traffic_light_fences = []
+                bp.set_is_traffic_light_green(True)
             else:
                 depth_data = sensor_data['CameraDepth']
                 depth_data = depth_to_array(depth_data)
                 current_x, current_y, _, _, _, current_yaw = get_current_pose(measurement_data)
                 traffic_light_fences = traffic_light_detector.get_traffic_light_fences(depth_data,current_x,current_y,current_yaw)
+                bp.set_is_traffic_light_green(False)
                 bp.add_stopsign_fences(traffic_light_fences)
             
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
