@@ -825,11 +825,11 @@ def exec_waypoint_nav_demo(args):
             # EditGroup2
             image_BGRA = to_bgra_array(sensor_data["CameraRGB"])
 
-            traffic_light_detected, boxes = traffic_light_detector.detect(image=image_BGRA)
+            traffic_light_detected, boxes, is_green = traffic_light_detector.detect(image=image_BGRA)
 
             if not traffic_light_detected:
                 traffic_light_fences = []
-            elif boxes[0].get_label() == 0: #go
+            elif is_green: #go
                 traffic_light_fences = []
                 bp.set_is_traffic_light_green(True)
             else:

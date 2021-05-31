@@ -50,7 +50,7 @@ def to_rot(r):
 class TrafficLightDetection:
     def __init__(self, camera_parameters, config):
         # Constants
-        self.NUM_SEMAPHORE_CHECKS = 10
+        self.NUM_SEMAPHORE_CHECKS = 13
         self.SCORE_THRESHOLD = 0.35
         
         #Detector
@@ -60,6 +60,8 @@ class TrafficLightDetection:
         self.prev_semaphore_box = None
         self.count_semaphore_detections = 0
         self.count_missdetection = 0
+        self._num_go = 0
+        self._num_stop = 0
         self.th = int(0.10 * camera_parameters["width"])
 
         # Camera parameters
@@ -104,6 +106,10 @@ class TrafficLightDetection:
                 if self.prev_semaphore_box == None:
                     self.prev_semaphore_box = current_box
                     self.count_semaphore_detections = 1
+                    if current_box.get_label() == 0:
+                        self._num_go += 1
+                    else:
+                        self._num_stop +=1
                 else:
                     # Check if the boxes refer to the same object
                     xmin_diff = abs(self.camera_width * current_box.xmin - self.camera_width * self.prev_semaphore_box.xmin)
@@ -113,13 +119,16 @@ class TrafficLightDetection:
 
                     if xmin_diff < self.th and xmax_diff < self.th and ymin_diff < self.th and ymax_diff < self.th:
                         # the two boxes refer to the same object
-                        if current_box.get_label() == self.prev_semaphore_box.get_label():
-                            self.count_semaphore_detections += 1
+                        self.count_semaphore_detections += 1
+                        if current_box.get_label() == 0:
+                            self._num_go += 1
                         else:
-                            self.count_semaphore_detections = 1
+                            self._num_stop +=1
                     else:
                         print("threshold violata")
-                        self.count_semaphore_detections = 1
+                        self.count_semaphore_detections = 0
+                        self._num_go = 0
+                        self._num_stop = 0
 
                     self.prev_semaphore_box = current_box
 
@@ -132,12 +141,17 @@ class TrafficLightDetection:
                 self.prev_semaphore_box = None
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
+                self._num_go = 0
+                self._num_stop = 0
 
         if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS:
+            is_green = self._num_go > self._num_stop
             self.count_semaphore_detections = 0
             self.count_missdetection = 0
-            return True, boxes
-        return False, boxes
+            self._num_go = 0
+            self._num_stop = 0
+            return True, boxes, is_green
+        return False, boxes, True
            
 
     def get_traffic_light_fences(self, depth_data, current_x, current_y, current_yaw):
