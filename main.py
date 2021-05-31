@@ -834,7 +834,8 @@ def exec_waypoint_nav_demo(args):
                 depth_data = depth_to_array(depth_data)
                 current_x, current_y, _, _, _, current_yaw = get_current_pose(measurement_data)
                 traffic_light_fences = traffic_light_detector.get_traffic_light_fences(depth_data,current_x,current_y,current_yaw)
-
+                bp.add_stopsign_fences(traffic_light_fences)
+            
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
             cv2.imshow("BGRA_IMAGE",image_BGRA)
@@ -894,7 +895,7 @@ def exec_waypoint_nav_demo(args):
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
-                bp.add_stopsign_fences(traffic_light_fences)
+                #bp.add_stopsign_fences(traffic_light_fences)
 
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)

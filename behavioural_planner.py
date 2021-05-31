@@ -7,7 +7,7 @@ FOLLOW_LANE = 0
 DECELERATE_TO_STOP = 1
 STAY_STOPPED = 2
 # Stop speed threshold
-STOP_THRESHOLD = 0.02
+STOP_THRESHOLD = 0.03
 # Number of cycles before moving from stop sign.
 STOP_COUNTS = 10
 
@@ -121,6 +121,7 @@ class BehaviouralPlanner:
             # passed the stop sign, return to lane following.
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
+            self._stopsign_fences.clear()
             closest_len, closest_index = get_closest_index(waypoints, ego_state)
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
