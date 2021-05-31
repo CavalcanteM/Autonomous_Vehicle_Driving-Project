@@ -88,6 +88,7 @@ class BehaviouralPlanner:
         # Make sure that get_closest_index() and get_goal_index() functions are
         # complete, and examine the check_for_stop_signs() function to
         # understand it.
+
         if self._state == FOLLOW_LANE:
             #print("FOLLOW_LANE")
             # First, find the closest index to the ego vehicle.
@@ -100,11 +101,12 @@ class BehaviouralPlanner:
 
             goal_index, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
             self._goal_index = goal_index
-            self._goal_state = waypoints[goal_index]
             
+            self._goal_state = waypoints[goal_index]
             if stop_sign_found: 
                 self._goal_state[2] = 0
                 self._state = DECELERATE_TO_STOP
+                print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
@@ -114,9 +116,11 @@ class BehaviouralPlanner:
             if self._is_traffic_light_green:
                 self._stopsign_fences.clear()
                 self._state = FOLLOW_LANE
+                print("FROM DECELERATE_TO_STOP TO FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
+                print("FROM DECELERATE_TO_STOP TO STAY_STOPPED")
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -146,6 +150,7 @@ class BehaviouralPlanner:
                 #if not stop_sign_found: self._state = FOLLOW_LANE
 
                 self._state = FOLLOW_LANE
+                print("FROM STAY_STOPPED TO FOLLOW_LANE")
                 
         else:
             raise ValueError('Invalid state value.')

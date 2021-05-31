@@ -144,7 +144,7 @@ class TrafficLightDetection:
                 self._num_go = 0
                 self._num_stop = 0
 
-        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS:
+        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go > int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop > int(self.NUM_SEMAPHORE_CHECKS/2)+1:
             is_green = self._num_go > self._num_stop
             self.count_semaphore_detections = 0
             self.count_missdetection = 0
@@ -250,9 +250,6 @@ class TrafficLightDetection:
                         # spos = np.add(spos, before)
 
                 traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
-                print("FENCES")
-                print(traffic_light_fences)
-
                 self.prev_semaphore_box = None
 
         return traffic_light_fences
