@@ -32,7 +32,6 @@ class BehaviouralPlanner:
         self._is_traffic_light_green = value
 
     def add_stopsign_fences(self, stopsign_fences):
-        # self._stopsign_fences.clear()
         for fence in stopsign_fences:
             self._stopsign_fences.append(fence)
 
@@ -98,15 +97,40 @@ class BehaviouralPlanner:
             # along the waypoints.
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
-
-            goal_index, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index)
-            self._goal_index = goal_index
-            
-            self._goal_state = waypoints[goal_index]
-            if stop_sign_found: 
-                self._goal_state[2] = 0
+            goal, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index, ego_state)
+            # goal_index, stop_sign_found = self.check_for_stop_signs(waypoints, closest_index, goal_index, ego_state)
+            if stop_sign_found:
+                self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
+                self._stopsign_fences.clear()
+                print("Waypoint ", self._goal_state)
                 print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
+            else:
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
+            # if stop_sign_found: 
+            #     # current_yaw = ego_state[2]
+            #     # goal = self._goal_state
+            #     # if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+            #     #     print("x+")
+            #     #     goal[0] = self._stopsign_fences[0][0] - 2
+            #     # elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
+            #     #     print("x-")
+            #     #     goal[0] = self._stopsign_fences[0][0] + 2
+            #     # else:
+            #     #     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+            #     #         print("y+")
+            #     #         goal[0] = self._stopsign_fences[0][1] - 2
+            #     #     else:
+            #     #         print("y-")
+            #     #         goal[0] = self._stopsign_fences[0][1] + 2
+            #     # goal[2] = 0
+            #     # print("GOAL ", goal)
+            #     # self._goal_state = goal
+            #     self._goal_state[2] = 0
+            #     self._state = DECELERATE_TO_STOP
+            #     self._stopsign_fences.clear()
+            #     print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
@@ -114,7 +138,7 @@ class BehaviouralPlanner:
         elif self._state == DECELERATE_TO_STOP:
             #print("DECELERATE_TO_STOP")
             if self._is_traffic_light_green:
-                self._stopsign_fences.clear()
+                # self._stopsign_fences.clear()
                 self._state = FOLLOW_LANE
                 print("FROM DECELERATE_TO_STOP TO FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
@@ -132,7 +156,7 @@ class BehaviouralPlanner:
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
             if self._is_traffic_light_green: 
-                self._stopsign_fences.clear()
+                # self._stopsign_fences.clear()
                 closest_len, closest_index = get_closest_index(waypoints, ego_state)
                 goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                 while waypoints[goal_index][2] <= 0.1: goal_index += 1
@@ -159,7 +183,7 @@ class BehaviouralPlanner:
     # Checks the given segment of the waypoint list to see if it
     # intersects with a semaphore stop line. If any index does, return the
     # new goal state accordingly.
-    def check_for_stop_signs(self, waypoints, closest_index, goal_index):
+    def check_for_stop_signs(self, waypoints, closest_index, goal_index, ego_state):
         """Checks for a stop sign that is intervening the goal path.
 
         Checks for a stop sign that is intervening the goal path. Returns a new
@@ -193,9 +217,9 @@ class BehaviouralPlanner:
         for i in range(closest_index, goal_index):
             # Check to see if path segment crosses any of the stop lines.
             intersect_flag = False
+            wp_1 = [ego_state[0], ego_state[1]]
             for stopsign_fence in self._stopsign_fences:
-
-                wp_1   = np.array(waypoints[i][0:2])
+                # wp_1   = np.array(waypoints[i-1][0:2])
                 wp_2   = np.array(waypoints[i+1][0:2])
                 s_1    = np.array(stopsign_fence[0:2])
                 s_2    = np.array(stopsign_fence[2:4])
@@ -235,11 +259,82 @@ class BehaviouralPlanner:
                 # the goal state to stop before the goal line.
                 
                 if intersect_flag:
+                    print("Fence ", stopsign_fence)
+                    print("WP1 ", wp_1)
+                    print("WP2 ", wp_2)
                     print("Intersect ", intersect_flag)
                     goal_index = i
-                    return goal_index, True
+                    current_yaw = ego_state[2]
+                    if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                        return [stopsign_fence[0] - 1, ego_state[1], 0], True
+                    elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
+                        return [stopsign_fence[0] + 1, ego_state[1], 0], True
+                    else:
+                        if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                            return [ego_state[0], stopsign_fence[1] - 1, 0], True
+                        else:
+                            return [ego_state[0], stopsign_fence[1] + 1, 0], True
+                    # if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                    #     return [ego_state[0]+5, ego_state[1], 0], True
+                    # elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
+                    #     return [ego_state[0]-5, ego_state[1], 0], True
+                    # else:
+                    #     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                    #         return [ego_state[0], ego_state[1]+5, 0], True
+                    #     else:
+                            # return [ego_state[0], ego_state[1]-5, 0], True
 
         return goal_index, False
+        # for i in range(closest_index, goal_index):
+        #     # Check to see if path segment crosses any of the stop lines.
+        #     intersect_flag = False
+        #     for stopsign_fence in self._stopsign_fences:
+
+        #         wp_1   = np.array(waypoints[i][0:2])
+        #         wp_2   = np.array(waypoints[i+1][0:2])
+        #         s_1    = np.array(stopsign_fence[0:2])
+        #         s_2    = np.array(stopsign_fence[2:4])
+        #         # print("****************")
+        #         # print(wp_1)
+        #         # print(wp_2)
+        #         # print(s_1)
+        #         # print(s_2)
+        #         # print("****************")
+        #         v1     = np.subtract(wp_2, wp_1)
+        #         v2     = np.subtract(s_1, wp_2)
+        #         sign_1 = np.sign(np.cross(v1, v2))
+        #         v2     = np.subtract(s_2, wp_2)
+        #         sign_2 = np.sign(np.cross(v1, v2))
+
+        #         v1     = np.subtract(s_2, s_1)
+        #         v2     = np.subtract(wp_1, s_2)
+        #         sign_3 = np.sign(np.cross(v1, v2))
+        #         v2     = np.subtract(wp_2, s_2)
+        #         sign_4 = np.sign(np.cross(v1, v2))
+
+        #         # Check if the line segments intersect.
+        #         if (sign_1 != sign_2) and (sign_3 != sign_4):
+        #             intersect_flag = True
+
+        #         # Check if the collinearity cases hold.
+        #         if (sign_1 == 0) and pointOnSegment(wp_1, s_1, wp_2):
+        #             intersect_flag = True
+        #         if (sign_2 == 0) and pointOnSegment(wp_1, s_2, wp_2):
+        #             intersect_flag = True
+        #         if (sign_3 == 0) and pointOnSegment(s_1, wp_1, s_2):
+        #             intersect_flag = True
+        #         if (sign_3 == 0) and pointOnSegment(s_1, wp_2, s_2):
+        #             intersect_flag = True
+
+        #         # If there is an intersection with a stop line, update
+        #         # the goal state to stop before the goal line.
+                
+        #         if intersect_flag:
+        #             print("Intersect ", intersect_flag)
+        #             goal_index = i
+        #             return goal_index, True
+
+        # return goal_index, False
     # EndEditGroup2
 
     # Gets the goal index in the list of waypoints, based on the lookahead and
