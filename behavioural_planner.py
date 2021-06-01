@@ -36,6 +36,9 @@ class BehaviouralPlanner:
         for fence in traffic_light_fences:
             self._traffic_light_fences.append(fence)
 
+    def get_follow_lead_vehicle(self):
+        return self._follow_lead_vehicle
+
     # Handles state transitions and computes the goal state.
     def transition_state(self, waypoints, ego_state, closed_loop_speed):
         """Handles state transitions and computes the goal state.  
@@ -110,8 +113,8 @@ class BehaviouralPlanner:
                 self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
-                print("Waypoint ", self._goal_state)
-                print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
+                print("[DEBUG] Waypoint ", self._goal_state)
+                print("[INFO] FOLLOW_LANE => DECELERATE_TO_STOP")
             else:
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
@@ -131,19 +134,22 @@ class BehaviouralPlanner:
             #self._goal_index = goal_index
             #self._goal_state = waypoints[goal_index]
 
+            # Check traffic lights
             if traffic_light_found:
                 self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
-                print("Waypoint ", self._goal_state)
-                print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
+                print("[DEBUG] Waypoint ", self._goal_state)
+                print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
+            # Check collisions
             elif not self._obstacle_on_lane:
                 self._state = FOLLOW_LANE
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
-            # else:
-            #     self._goal_index = goal_index
-            #     self._goal_state = waypoints[goal_index]
+            # There are no obstacles and traffic lights
+            else:
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
 
 
         # In this state, check if we have reached a complete stop. Use the
@@ -155,11 +161,11 @@ class BehaviouralPlanner:
             if self._is_traffic_light_green:
                 # self._stopsign_fences.clear()
                 self._state = FOLLOW_LANE
-                print("FROM DECELERATE_TO_STOP TO FOLLOW_LANE")
+                print("[INFO] DECELERATE_TO_STOP => FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
-                print("FROM DECELERATE_TO_STOP TO STAY_STOPPED")
+                print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -189,7 +195,7 @@ class BehaviouralPlanner:
                 #if not stop_sign_found: self._state = FOLLOW_LANE
 
                 self._state = FOLLOW_LANE
-                print("FROM STAY_STOPPED TO FOLLOW_LANE")
+                print("[INFO] STAY_STOPPED => FOLLOW_LANE")
                 
         else:
             raise ValueError('Invalid state value.')

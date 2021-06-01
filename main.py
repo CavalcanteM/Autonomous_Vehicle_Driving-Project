@@ -50,8 +50,8 @@ PLAYER_START_INDEX = 13          #  spawn index for player 13 default
 DESTINATION_INDEX = 91        # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 93          #  spawn index for player
 # DESTINATION_INDEX = 56        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 1      # total number of pedestrians to spawn
-NUM_VEHICLES           = 1      # total number of vehicles to spawn
+NUM_PEDESTRIANS        = 3      # total number of pedestrians to spawn
+NUM_VEHICLES           = 10      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -881,6 +881,10 @@ def exec_waypoint_nav_demo(args):
 
             # EditGroup2
             # Obtain Lead Vehicle information.
+            # TODO: creare lista degli veicoli fermi (ostacoli)
+            # e dei veicoli in movimento (possibili lead)
+            # Potrebbe servire salvare anche la direzione in cui si muove un pedone
+            # Si potrebbe creare un problema al semaforo (risolvere dopo)
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
@@ -892,12 +896,13 @@ def exec_waypoint_nav_demo(args):
                              agent.vehicle.transform.location.y])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
+                    print("[DEBUG] Posizione del primo veicolo: ", lead_car_pos[0])
+                # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(
                             [agent.pedestrian.transform.location.x,
                              agent.pedestrian.transform.location.y])
-                    print("Posizione del pedone: ", pedestrian_pos[0])
-                    # Obtain the informations about a pedestrian
+                    print("[DEBUG] Posizione del primo pedone: ", pedestrian_pos[0])        
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -924,7 +929,11 @@ def exec_waypoint_nav_demo(args):
 
                 # EditGroup2
                 # Check to see if we need to follow the lead vehicle.
-                # bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
+                for index in range(len(lead_car_pos)):
+                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[index])
+                    if bp.get_follow_lead_vehicle():
+                        print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), index)
+                        break
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
