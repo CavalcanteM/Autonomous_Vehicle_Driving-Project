@@ -102,14 +102,15 @@ class TrafficLightDetection:
             current_box = boxes[0]
 
             if current_box.get_score() > self.SCORE_THRESHOLD:
+                self.count_missdetection = 0
                 # First time semaphore is detected
                 if self.prev_semaphore_box == None:
                     self.prev_semaphore_box = current_box
                     self.count_semaphore_detections = 1
                     if current_box.get_label() == 0:
-                        self._num_go += 1
+                        self._num_go = 1
                     else:
-                        self._num_stop +=1
+                        self._num_stop =1
                 else:
                     # Check if the boxes refer to the same object
                     xmin_diff = abs(self.camera_width * current_box.xmin - self.camera_width * self.prev_semaphore_box.xmin)
@@ -124,18 +125,16 @@ class TrafficLightDetection:
                             self._num_go += 1
                         else:
                             self._num_stop +=1
+                        self.prev_semaphore_box = current_box
                     else:
                         print("threshold violata")
+                        self.prev_semaphore_box = None
                         self.count_semaphore_detections = 0
                         self._num_go = 0
                         self._num_stop = 0
-
-                    self.prev_semaphore_box = current_box
-
-                self.count_missdetection = 0
             else:
                 self.count_missdetection += 1
-        else:
+        elif self.prev_semaphore_box is not None:
             self.count_missdetection += 1
 
         if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
@@ -146,7 +145,7 @@ class TrafficLightDetection:
                 self._num_go = 0
                 self._num_stop = 0
 
-        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go > int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop > int(self.NUM_SEMAPHORE_CHECKS/2)+1:
+        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
             is_green = self._num_go > self._num_stop
             self.count_semaphore_detections = 0
             self.count_missdetection = 0
@@ -163,11 +162,13 @@ class TrafficLightDetection:
             ymin = self.camera_height*self.prev_semaphore_box.ymin
             xmax = self.camera_width*self.prev_semaphore_box.xmax
             ymax = self.camera_height*self.prev_semaphore_box.ymax
-
-            xmin = xmin - (xmax-xmin)
-            xmax = xmax + (xmax-xmin)
-            ymin = ymin - (ymax-ymin)
-            ymax = ymax + (ymax-ymin)
+            w = (xmax-xmin)
+            xmin = xmin - 4*w
+            xmax = xmax + 4*w
+            # ymin = ymin - (ymax-ymin)
+            # ymax = ymax + (ymax-ymin)
+            ymin = ymin - 2*w
+            ymax = ymax - 2*w
 
             # From pixel to waypoint
             depth = 1000 #Distance of the sky
@@ -178,7 +179,7 @@ class TrafficLightDetection:
                             # Projection Pixel to Image Frame
                             y = j
                             x = i
-                            depth = depth_data[y][x] * 1000  # Consider depth in meters
+                            depth = depth_data[y][x]# Consider depth in meters
 
 
             # From pixel to waypoint
@@ -188,6 +189,7 @@ class TrafficLightDetection:
 
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
+            print("Depth ", depth)
             if depth != 1000.0:
 
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
@@ -237,28 +239,22 @@ class TrafficLightDetection:
                         [5*int(round(abs(cos(current_yaw)))),5*int(round(abs(cos(current_yaw))))],
                         [5*int(round(abs(sin(current_yaw)))),5*int(round(abs(sin(current_yaw))))]])
 
-                print("cos sin")
-                print(np.sign(round(np.cos(current_yaw))))
-                print(np.sign(round(np.sin(current_yaw))))
                 if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
-                    print("x+")
                     spos = np.add(spos, spos_shift)
                     # spos = np.subtract(spos, before)
                 elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
-                    print("x-")
                     spos = np.subtract(spos, spos_shift)
                     # spos = np.add(spos,before)
                 else:
                     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
-                        print("y+")
                         spos = np.add(spos, spos_shift)
                         # spos = np.subtract(spos, before)
                     else:
-                        print("y-")
                         spos = np.subtract(spos, spos_shift)
                         # spos = np.add(spos, before)
 
                 traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
                 self.prev_semaphore_box = None
 
+        print("Fence calcolata: ", traffic_light_fences)
         return traffic_light_fences
