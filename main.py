@@ -892,7 +892,7 @@ def exec_waypoint_nav_demo(args):
                              agent.vehicle.transform.location.y])
                     lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                     lead_car_speed.append(agent.vehicle.forward_speed)
-                if agent.HadField('pedestrian'):
+                if agent.HasField('pedestrian'):
                     pedestrian_pos.append(
                             [agent.pedestrian.transform.location.x,
                              agent.pedestrian.transform.location.y])
