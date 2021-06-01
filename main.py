@@ -836,7 +836,7 @@ def exec_waypoint_nav_demo(args):
                 current_x, current_y, _, _, _, current_yaw = get_current_pose(measurement_data)
                 traffic_light_fences = traffic_light_detector.get_traffic_light_fences(depth_data,current_x,current_y,current_yaw)
                 bp.set_is_traffic_light_green(False)
-                bp.add_stopsign_fences(traffic_light_fences)
+                bp.add_traffic_light_fences(traffic_light_fences)
             
             image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
             #image_BGRA = cv2.resize(image_BGRA, (200, 200))
