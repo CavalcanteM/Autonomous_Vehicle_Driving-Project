@@ -814,8 +814,6 @@ def exec_waypoint_nav_demo(args):
         with open(config_path) as config_buffer:
             config = json.loads(config_buffer.read())
         traffic_light_detector = TrafficLightDetection(camera_parameters=camera_parameters, config=config)
-
-        
         # EndEditGroup2
 
         for frame in range(TOTAL_EPISODE_FRAMES):
@@ -881,6 +879,27 @@ def exec_waypoint_nav_demo(args):
                                                  prev_collision_other)
             collided_flag_history.append(collided_flag)
 
+            # EditGroup2
+            # Obtain Lead Vehicle information.
+            lead_car_pos    = []
+            lead_car_length = []
+            lead_car_speed  = []
+            pedestrian_pos  = []
+            for agent in measurement_data.non_player_agents:
+                if agent.HasField('vehicle'):
+                    lead_car_pos.append(
+                            [agent.vehicle.transform.location.x,
+                             agent.vehicle.transform.location.y])
+                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                    lead_car_speed.append(agent.vehicle.forward_speed)
+                if agent.HadField('pedestrian'):
+                    pedestrian_pos.append(
+                            [agent.pedestrian.transform.location.x,
+                             agent.pedestrian.transform.location.y])
+                    print("Posizione del pedone: ", pedestrian_pos[0])
+                    # Obtain the informations about a pedestrian
+            # EndEditGroup2
+
             # Execute the behaviour and local planning in the current instance
             # Note that updating the local path during every controller update
             # produces issues with the tracking performance (imagine everytime
@@ -896,13 +915,17 @@ def exec_waypoint_nav_demo(args):
                 # Calculate the goal state set in the local frame for the local planner.
                 # Current speed should be open loop for the velocity profile generation.
                 ego_state = [current_x, current_y, current_yaw, open_loop_speed]
+                
                 # Set lookahead based on current speed.
                 bp.set_lookahead(BP_LOOKAHEAD_BASE + BP_LOOKAHEAD_TIME * open_loop_speed)
 
-                #bp.add_stopsign_fences(traffic_light_fences)
-
                 # Perform a state transition in the behavioural planner.
                 bp.transition_state(waypoints, ego_state, current_speed)
+
+                # EditGroup2
+                # Check to see if we need to follow the lead vehicle.
+                # bp.check_for_lead_vehicle(ego_state, lead_car_pos[1])
+                # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
@@ -928,6 +951,9 @@ def exec_waypoint_nav_demo(args):
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
                     desired_speed = bp._goal_state[2]
+                    # EditGroup2
+                    # lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
+                    # EndEditGroup2
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
                     local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, None, bp._follow_lead_vehicle)
 

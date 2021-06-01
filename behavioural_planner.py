@@ -6,10 +6,11 @@ import math
 FOLLOW_LANE = 0
 DECELERATE_TO_STOP = 1
 STAY_STOPPED = 2
+OBSTACLE_AVOIDANCE = 3
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
-STOP_COUNTS = 10
+# STOP_COUNTS = 10
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead):
@@ -98,6 +99,13 @@ class BehaviouralPlanner:
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
             goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
             
+            # Check for collisions
+            if self._obstacle_on_lane:
+                self._state = OBSTACLE_AVOIDANCE
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
+
+            # Check for traffic lights
             if traffic_light_found:
                 self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
@@ -108,6 +116,36 @@ class BehaviouralPlanner:
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
             
+        elif self._state == OBSTACLE_AVOIDANCE:
+            # First, find the closest index to the ego vehicle.
+            closest_len, closest_index = get_closest_index(waypoints, ego_state)
+
+            # Next, find the goal index that lies within the lookahead distance
+            # along the waypoints.
+            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+            while waypoints[goal_index][2] <= 0.1: goal_index += 1
+
+            # Finally, check the index set between closest_index and goal_index
+            # for stop signs, and compute the goal state accordingly
+            goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index)
+            #self._goal_index = goal_index
+            #self._goal_state = waypoints[goal_index]
+
+            if traffic_light_found:
+                self._goal_state = goal    
+                self._state = DECELERATE_TO_STOP
+                self._traffic_light_fences.clear()
+                print("Waypoint ", self._goal_state)
+                print("FROM FOLLOW_LANE TO DECELERATE_TO_STOP")
+            elif not self._obstacle_on_lane:
+                self._state = FOLLOW_LANE
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
+            # else:
+            #     self._goal_index = goal_index
+            #     self._goal_state = waypoints[goal_index]
+
+
         # In this state, check if we have reached a complete stop. Use the
         # closed loop speed to do so, to ensure we are actually at a complete
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
