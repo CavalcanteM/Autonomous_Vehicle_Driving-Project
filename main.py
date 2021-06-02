@@ -51,7 +51,7 @@ DESTINATION_INDEX = 58        # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 3      # total number of pedestrians to spawn
-NUM_VEHICLES           = 30      # total number of vehicles to spawn
+NUM_VEHICLES           = 5      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -815,7 +815,9 @@ def exec_waypoint_nav_demo(args):
             config = json.loads(config_buffer.read())
         traffic_light_detector = TrafficLightDetection(camera_parameters=camera_parameters, config=config)
         # EndEditGroup2
-
+        # EditGroup2
+        prev_lead = set()
+        # EndEditGroup2
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
             measurement_data, sensor_data = client.read_data()
@@ -886,29 +888,41 @@ def exec_waypoint_nav_demo(args):
             lead_car_length = []
             lead_car_speed  = []
             lead_car_yaw    = []
-            #obstacle_car_pos = []
+            obstacle_car_pos = []
             pedestrian_pos  = []
             for agent in measurement_data.non_player_agents:
                 if agent.HasField('vehicle'):
-                    #if agent.vehicle.forward_speed > 0: # Possible lead vehicle
-                    lead_car_pos.append(
-                            [agent.vehicle.transform.location.x,
-                            agent.vehicle.transform.location.y])
-                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                    lead_car_speed.append(agent.vehicle.forward_speed)
-                    lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
-                    #else: # Car does not move, it's an obstacle
-                        #obstacle_car_pos.append(agent.vehicle)
+                    if agent.id not in prev_lead:
+                        if agent.vehicle.forward_speed > 0: # Possible lead vehicle
+                            lead_car_pos.append(
+                                    [agent.vehicle.transform.location.x,
+                                    agent.vehicle.transform.location.y])
+                            lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                            lead_car_speed.append(agent.vehicle.forward_speed)
+                            lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
+
+                            prev_lead.add(agent.id)
+                        else: # Car does not move, it's an obstacle
+                            obstacle_car_pos.append(agent.vehicle)
+                    else:
+                        lead_car_pos.append(
+                                [agent.vehicle.transform.location.x,
+                                agent.vehicle.transform.location.y])
+                        lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                        lead_car_speed.append(agent.vehicle.forward_speed)
+                        lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
                 # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(agent.pedestrian)
+            
+            print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
 
             # Transform obstacles to world
-            # obstacles_box_pts = []
-            # for index in range(len(obstacle_car_pos)):
-                # current = obstacle_car_pos[index]
-                # current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                # obstacles_box_pts.append(current_box_pts)
+            obstacles_box_pts = []
+            for index in range(len(obstacle_car_pos)):
+                current = obstacle_car_pos[index]
+                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                obstacles_box_pts.append(current_box_pts)
 
             # Transform pedestrians to world
             # pedestrian_box_pts = []
@@ -950,9 +964,7 @@ def exec_waypoint_nav_demo(args):
                 #         print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[index])
                 #         break
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
-                if lead_index == None:
-                    print("Nessun veicolo trovato")
-                else:
+                if lead_index is not None:
                     print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
                 # EndEditGroup2
 
