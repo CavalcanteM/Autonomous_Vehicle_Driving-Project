@@ -880,29 +880,40 @@ def exec_waypoint_nav_demo(args):
             collided_flag_history.append(collided_flag)
 
             # EditGroup2
-            # Obtain Lead Vehicle information.
-            # TODO: creare lista degli veicoli fermi (ostacoli)
-            # e dei veicoli in movimento (possibili lead)
-            # Potrebbe servire salvare anche la direzione in cui si muove un pedone
-            # Si potrebbe creare un problema al semaforo (risolvere dopo)
+            # Obtain Lead Vehicle and Obstacles information.
+            # TODO: Si potrebbe creare un problema al semaforo (risolvere dopo)
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
+            obstacle_car_pos = []
             pedestrian_pos  = []
             for agent in measurement_data.non_player_agents:
                 if agent.HasField('vehicle'):
-                    lead_car_pos.append(
-                            [agent.vehicle.transform.location.x,
-                             agent.vehicle.transform.location.y])
-                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                    lead_car_speed.append(agent.vehicle.forward_speed)
-                    print("[DEBUG] Posizione del primo veicolo: ", lead_car_pos[0])
+                    if agent.vehicle.forward_speed > 0: # Possible lead vehicle
+                        lead_car_pos.append(
+                                [agent.vehicle.transform.location.x,
+                                agent.vehicle.transform.location.y])
+                        lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                        lead_car_speed.append(agent.vehicle.forward_speed)
+                    else: # Car does not move, it's an obstacle
+                        obstacle_car_pos.append(agent.vehicle)
                 # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
-                    pedestrian_pos.append(
-                            [agent.pedestrian.transform.location.x,
-                             agent.pedestrian.transform.location.y])
-                    print("[DEBUG] Posizione del primo pedone: ", pedestrian_pos[0])        
+                    pedestrian_pos.append(agent.pedestrian)
+
+            # Transform obstacles to world
+            obstacles_box_pts = []
+            for index in range(len(obstacle_car_pos)):
+                current = obstacle_car_pos[index]
+                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                obstacles_box_pts.append(current_box_pts)
+
+            # Transform pedestrians to world
+            # pedestrian_box_pts = []
+            # for index in range(len(pedestrian_pos)):
+            #     current = pedestrian_pos[index]
+            #     current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+            #     pedestrian_box_pts.append(current_box_pts)
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -946,7 +957,7 @@ def exec_waypoint_nav_demo(args):
                 paths = local_planner.transform_paths(paths, ego_state)
 
                 # Perform collision checking.
-                collision_check_array = lp._collision_checker.collision_check(paths, [])
+                collision_check_array = lp._collision_checker.collision_check(paths, [obstacles_box_pts])
 
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
