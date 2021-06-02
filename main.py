@@ -46,12 +46,12 @@ import postprocessing
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 13          #  spawn index for player 13 default
-DESTINATION_INDEX = 91        # Setting a Destination HERE 91 default
-# PLAYER_START_INDEX = 93          #  spawn index for player
-# DESTINATION_INDEX = 56        # Setting a Destination HERE
+PLAYER_START_INDEX = 93          #  spawn index for player 13 default
+DESTINATION_INDEX = 58        # Setting a Destination HERE 91 default
+# PLAYER_START_INDEX = 145          #  spawn index for player
+# DESTINATION_INDEX = 60        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 3      # total number of pedestrians to spawn
-NUM_VEHICLES           = 10      # total number of vehicles to spawn
+NUM_VEHICLES           = 30      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -885,28 +885,30 @@ def exec_waypoint_nav_demo(args):
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
-            obstacle_car_pos = []
+            lead_car_yaw    = []
+            #obstacle_car_pos = []
             pedestrian_pos  = []
             for agent in measurement_data.non_player_agents:
                 if agent.HasField('vehicle'):
-                    if agent.vehicle.forward_speed > 0: # Possible lead vehicle
-                        lead_car_pos.append(
-                                [agent.vehicle.transform.location.x,
-                                agent.vehicle.transform.location.y])
-                        lead_car_length.append(agent.vehicle.bounding_box.extent.x)
-                        lead_car_speed.append(agent.vehicle.forward_speed)
-                    else: # Car does not move, it's an obstacle
-                        obstacle_car_pos.append(agent.vehicle)
+                    #if agent.vehicle.forward_speed > 0: # Possible lead vehicle
+                    lead_car_pos.append(
+                            [agent.vehicle.transform.location.x,
+                            agent.vehicle.transform.location.y])
+                    lead_car_length.append(agent.vehicle.bounding_box.extent.x)
+                    lead_car_speed.append(agent.vehicle.forward_speed)
+                    lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
+                    #else: # Car does not move, it's an obstacle
+                        #obstacle_car_pos.append(agent.vehicle)
                 # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(agent.pedestrian)
 
             # Transform obstacles to world
-            obstacles_box_pts = []
-            for index in range(len(obstacle_car_pos)):
-                current = obstacle_car_pos[index]
-                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                obstacles_box_pts.append(current_box_pts)
+            # obstacles_box_pts = []
+            # for index in range(len(obstacle_car_pos)):
+                # current = obstacle_car_pos[index]
+                # current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                # obstacles_box_pts.append(current_box_pts)
 
             # Transform pedestrians to world
             # pedestrian_box_pts = []
@@ -940,11 +942,18 @@ def exec_waypoint_nav_demo(args):
 
                 # EditGroup2
                 # Check to see if we need to follow the lead vehicle.
-                for index in range(len(lead_car_pos)):
-                    bp.check_for_lead_vehicle(ego_state, lead_car_pos[index])
-                    if bp.get_follow_lead_vehicle():
-                        print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), index)
-                        break
+                # lead_index = None
+                # for index in range(len(lead_car_pos)):
+                #     bp.check_for_lead_vehicle(ego_state, lead_car_pos[index])
+                #     if bp.get_follow_lead_vehicle():
+                #         lead_index = index
+                #         print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[index])
+                #         break
+                lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
+                if lead_index == None:
+                    print("Nessun veicolo trovato")
+                else:
+                    print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
@@ -956,9 +965,16 @@ def exec_waypoint_nav_demo(args):
                 # Transform those paths back to the global frame.
                 paths = local_planner.transform_paths(paths, ego_state)
 
+                # EditGroup2
                 # Perform collision checking.
-                collision_check_array = lp._collision_checker.collision_check(paths, [obstacles_box_pts])
-
+                # collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
+                collision_check_array = lp._collision_checker.collision_check(paths, [])
+                
+                # if bp._state == behavioural_planner.FOLLOW_LANE and np.any(collision_check_array == False):
+                #     bp._obstacle_on_lane = True
+                # else:
+                #     bp._obstacle_on_lane = False
+                # EndEditGroup2
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
                 # If no path was feasible, continue to follow the previous best path.
@@ -972,10 +988,13 @@ def exec_waypoint_nav_demo(args):
                     # Compute the velocity profile for the path, and compute the waypoints.
                     desired_speed = bp._goal_state[2]
                     # EditGroup2
-                    # lead_car_state = [lead_car_pos[1][0], lead_car_pos[1][1], lead_car_speed[1]]
+                    if lead_index is not None:
+                        lead_car_state = [lead_car_pos[lead_index][0], lead_car_pos[lead_index][1], lead_car_speed[lead_index]]
+                    else:
+                        lead_car_state = None
                     # EndEditGroup2
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, None, bp._follow_lead_vehicle)
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
 
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
