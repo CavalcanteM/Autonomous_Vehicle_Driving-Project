@@ -162,6 +162,10 @@ class TrafficLightDetection:
             ymin = self.camera_height*self.prev_semaphore_box.ymin
             xmax = self.camera_width*self.prev_semaphore_box.xmax
             ymax = self.camera_height*self.prev_semaphore_box.ymax
+            prop = self.prev_semaphore_box.xmin
+            
+            # 45:1=alfa:prop   -> alfa = prop*90 - 45 
+
             w = (xmax-xmin)
             xmin = xmin - 4*w
             xmax = xmax + 4*w
@@ -186,12 +190,15 @@ class TrafficLightDetection:
             pixel = [x , y, 1]
             pixel = np.reshape(pixel, (3,1))
             
-
+            print("PROP ", prop)
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
-            print("Depth ", depth)
-            if depth != 1000.0:
-
+            print("Depth prima", depth)
+            if depth != 1000.0 and prop > 0.5:
+                alpha = prop * 90 - 45
+                alpha = alpha / 180 * pi
+                depth = depth * cos(alpha)
+                print("Depth dopo", depth)
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
                 
                 # Create extended vector
