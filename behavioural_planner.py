@@ -179,7 +179,7 @@ class BehaviouralPlanner:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
                 # print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
-                logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
+                logging.info("DECELERATE_TO_STOP => STAY_STOPPED")
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
