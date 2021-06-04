@@ -41,6 +41,7 @@ from carla.planner.city_track import CityTrack
 from traffic_light_detection import TrafficLightDetection
 sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 import postprocessing
+import logging
 # EndEditGroup2
 
 ###############################################################################
@@ -915,7 +916,8 @@ def exec_waypoint_nav_demo(args):
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(agent.pedestrian)
             
-            print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
+            #print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
+            logging.info("Lead vehicle from of the current frame: ", prev_lead)
 
             # Transform obstacles to world
             obstacles_box_pts = []
@@ -965,7 +967,8 @@ def exec_waypoint_nav_demo(args):
                 #         break
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
-                    print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
+                    # print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
+                    logging.debug("Veicolo trovato", bp.bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import numpy as np
 import math
+import logging
 
 # State machine states
 FOLLOW_LANE = 0
@@ -114,8 +115,10 @@ class BehaviouralPlanner:
                 self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
-                print("[DEBUG] Waypoint ", self._goal_state)
-                print("[INFO] FOLLOW_LANE => DECELERATE_TO_STOP")
+                # print("[DEBUG] Waypoint ", self._goal_state)
+                logging.debug("Waypoint ", self._goal_state)
+                # print("[INFO] FOLLOW_LANE => DECELERATE_TO_STOP")
+                logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
             else:
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
@@ -140,8 +143,10 @@ class BehaviouralPlanner:
                 self._goal_state = goal    
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
-                print("[DEBUG] Waypoint ", self._goal_state)
-                print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
+                # print("[DEBUG] Waypoint ", self._goal_state)
+                logging.debug("Waypoint ", self._goal_state)
+                # print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
+                logging.info("OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
             # Check collisions
             elif not self._obstacle_on_lane:
                 self._state = FOLLOW_LANE
@@ -162,11 +167,13 @@ class BehaviouralPlanner:
             if self._is_traffic_light_green:
                 # self._stopsign_fences.clear()
                 self._state = FOLLOW_LANE
-                print("[INFO] DECELERATE_TO_STOP => FOLLOW_LANE")
+                # print("[INFO] DECELERATE_TO_STOP => FOLLOW_LANE")
+                logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
-                print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
+                # print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
+                logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
@@ -196,7 +203,8 @@ class BehaviouralPlanner:
                 #if not stop_sign_found: self._state = FOLLOW_LANE
 
                 self._state = FOLLOW_LANE
-                print("[INFO] STAY_STOPPED => FOLLOW_LANE")
+                # print("[INFO] STAY_STOPPED => FOLLOW_LANE")
+                logging.info("STAY_STOPPED => FOLLOW_LANE")
                 
         else:
             raise ValueError('Invalid state value.')
