@@ -928,11 +928,11 @@ def exec_waypoint_nav_demo(args):
                 obstacles_box_pts.append(current_box_pts)
 
             # Transform pedestrians to world
-            # pedestrian_box_pts = []
-            # for index in range(len(pedestrian_pos)):
-            #     current = pedestrian_pos[index]
-            #     current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-            #     pedestrian_box_pts.append(current_box_pts)
+            pedestrian_box_pts = []
+            for index in range(len(pedestrian_pos)):
+                current = pedestrian_pos[index]
+                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                pedestrian_box_pts.append(current_box_pts)
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -984,13 +984,14 @@ def exec_waypoint_nav_demo(args):
                 # EditGroup2
                 # Perform collision checking.
                 # collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
-                collision_check_array = lp._collision_checker.collision_check(paths, [])
+                collision_check_array = lp._collision_checker.collision_check(paths, pedestrian_box_pts)
                 
-                # if bp._state == behavioural_planner.FOLLOW_LANE and np.any(collision_check_array == False):
-                #     bp._obstacle_on_lane = True
-                # else:
-                #     bp._obstacle_on_lane = False
+                if bp._state == behavioural_planner.FOLLOW_LANE and np.any(collision_check_array == False):
+                    bp._obstacle_on_lane = True
+                else:
+                    bp._obstacle_on_lane = False
                 # EndEditGroup2
+                
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
                 # If no path was feasible, continue to follow the previous best path.

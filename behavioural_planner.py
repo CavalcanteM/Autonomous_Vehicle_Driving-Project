@@ -109,9 +109,11 @@ class BehaviouralPlanner:
                 traffic_light_found = False
             # Check for collisions
             if self._obstacle_on_lane:
-                self._state = OBSTACLE_AVOIDANCE
+                # self._state = OBSTACLE_AVOIDANCE
+                self._state = DECELERATE_TO_STOP
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
+                logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
 
             # Check for traffic lights
             if traffic_light_found:
@@ -170,6 +172,9 @@ class BehaviouralPlanner:
         # state.
         elif self._state == DECELERATE_TO_STOP:
             #print("DECELERATE_TO_STOP")
+            if not self._obstacle_on_lane:
+                self.state = FOLLOW_LANE
+                logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
             if self._is_traffic_light_green:
                 # self._stopsign_fences.clear()
                 self._state = FOLLOW_LANE
@@ -177,7 +182,7 @@ class BehaviouralPlanner:
                 logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
-                self._stop_count = 0
+                # self._stop_count = 0
                 # print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
                 logging.info("DECELERATE_TO_STOP => STAY_STOPPED")
 
