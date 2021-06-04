@@ -46,12 +46,12 @@ import postprocessing
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 93          #  spawn index for player 13 default
-DESTINATION_INDEX = 58        # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 105         #  spawn index for player 13 default
+DESTINATION_INDEX = 137       # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 3      # total number of pedestrians to spawn
-NUM_VEHICLES           = 5      # total number of vehicles to spawn
+NUM_PEDESTRIANS        = 1      # total number of pedestrians to spawn
+NUM_VEHICLES           = 1      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -840,10 +840,11 @@ def exec_waypoint_nav_demo(args):
                 bp.set_is_traffic_light_green(False)
                 bp.add_traffic_light_fences(traffic_light_fences)
             
-            image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
-            #image_BGRA = cv2.resize(image_BGRA, (200, 200))
-            cv2.imshow("BGRA_IMAGE",image_BGRA)
-            cv2.imshow("DEPTH", depth_to_array(sensor_data["CameraDepth"]))
+            if enable_live_plot:
+                image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
+                #image_BGRA = cv2.resize(image_BGRA, (200, 200))
+                cv2.imshow("BGRA_IMAGE",image_BGRA)
+                cv2.imshow("DEPTH", depth_to_array(sensor_data["CameraDepth"]))
             # EndEditGroup2
 
             # UPDATE HERE the obstacles list
@@ -915,7 +916,7 @@ def exec_waypoint_nav_demo(args):
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(agent.pedestrian)
             
-            print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
+            # print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
 
             # Transform obstacles to world
             obstacles_box_pts = []
