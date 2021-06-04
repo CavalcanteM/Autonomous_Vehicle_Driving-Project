@@ -3,6 +3,7 @@
 import numpy as np
 from math import cos, sin, pi,tan
 from cutils import CUtils
+import logging
 
 #   Required to import carla library
 import os
@@ -127,7 +128,8 @@ class TrafficLightDetection:
                             self._num_stop +=1
                         self.prev_semaphore_box = current_box
                     else:
-                        print("threshold violata")
+                        # print("threshold violata")
+                        logging.debug("Threshold violata")
                         self.prev_semaphore_box = None
                         self.count_semaphore_detections = 0
                         self._num_go = 0
@@ -138,7 +140,8 @@ class TrafficLightDetection:
             self.count_missdetection += 1
 
         if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
-                print("missdetection")
+                # print("missdetection")
+                logging.debug("Missdetection")
                 self.prev_semaphore_box = None
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
@@ -190,15 +193,18 @@ class TrafficLightDetection:
             pixel = [x , y, 1]
             pixel = np.reshape(pixel, (3,1))
             
-            print("PROP ", prop)
+            # print("PROP ", prop)
+            logging.debug("PROP ", prop)
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
-            print("Depth prima", depth)
+            # print("Depth prima", depth)
+            logging.debug("Depth prima", depth)
             if depth != 1000.0 and prop > 0.5:
                 alpha = prop * 90 - 45
                 alpha = alpha / 180 * pi
                 depth = depth * cos(alpha)
-                print("Depth dopo", depth)
+                # print("Depth dopo", depth)
+                logging.debug("Depth dopo", depth)
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
                 
                 # Create extended vector
@@ -263,5 +269,6 @@ class TrafficLightDetection:
                 traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
                 self.prev_semaphore_box = None
 
-        print("Fence calcolata: ", traffic_light_fences)
+        # print("Fence calcolata: ", traffic_light_fences) 
+        logging.debug("Fence calcolata: ", traffic_light_fences)
         return traffic_light_fences

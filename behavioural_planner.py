@@ -295,10 +295,14 @@ class BehaviouralPlanner:
                 # the goal state to stop before the goal line.
                 
                 if intersect_flag:
-                    print("Fence ", traffic_light_fence)
-                    print("WP1 ", wp_1)
-                    print("WP2 ", wp_2)
-                    print("Intersect ", intersect_flag)
+                    # print("Fence ", traffic_light_fence)
+                    # print("WP1 ", wp_1)
+                    # print("WP2 ", wp_2)
+                    # print("Intersect ", intersect_flag)
+                    logging.debug("Fence ", traffic_light_fence)
+                    logging.debug("WP1 ", wp_1)
+                    logging.debug("WP2 ", wp_2)
+                    logging.debug("Intersect ", intersect_flag)
                     goal_index = i
                     current_yaw = ego_state[2]
                     if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
