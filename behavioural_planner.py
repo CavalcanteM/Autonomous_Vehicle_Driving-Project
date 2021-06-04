@@ -119,7 +119,7 @@ class BehaviouralPlanner:
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
                 # print("[DEBUG] Waypoint ", self._goal_state)
-                logging.debug("Waypoint ", self._goal_state)
+                logging.debug("Waypoint %s", str(self._goal_state))
                 # print("[INFO] FOLLOW_LANE => DECELERATE_TO_STOP")
                 logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
             else:
@@ -150,7 +150,7 @@ class BehaviouralPlanner:
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
                 # print("[DEBUG] Waypoint ", self._goal_state)
-                logging.debug("Waypoint ", self._goal_state)
+                logging.debug("Waypoint %s", str(self._goal_state))
                 # print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
                 logging.info("OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
             # Check collisions
@@ -299,10 +299,10 @@ class BehaviouralPlanner:
                     # print("WP1 ", wp_1)
                     # print("WP2 ", wp_2)
                     # print("Intersect ", intersect_flag)
-                    logging.debug("Fence ", traffic_light_fence)
-                    logging.debug("WP1 ", wp_1)
-                    logging.debug("WP2 ", wp_2)
-                    logging.debug("Intersect ", intersect_flag)
+                    logging.debug("Fence %s", str(traffic_light_fence))
+                    logging.debug("WP1 %s", str(wp_1))
+                    logging.debug("WP2 %s", str(wp_2))
+                    logging.debug("Intersect %s", str(intersect_flag))
                     goal_index = i
                     current_yaw = ego_state[2]
                     if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra

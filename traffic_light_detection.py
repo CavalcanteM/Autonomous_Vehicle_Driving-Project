@@ -194,17 +194,17 @@ class TrafficLightDetection:
             pixel = np.reshape(pixel, (3,1))
             
             # print("PROP ", prop)
-            logging.debug("PROP ", prop)
+            logging.debug("PROP %s", str(prop))
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
             # print("Depth prima", depth)
-            logging.debug("Depth prima", depth)
+            logging.debug("Depth prima %s", str(depth))
             if depth != 1000.0 and prop > 0.5:
                 alpha = prop * 90 - 45
                 alpha = alpha / 180 * pi
                 depth = depth * cos(alpha)
                 # print("Depth dopo", depth)
-                logging.debug("Depth dopo", depth)
+                logging.debug("Depth dopo %s", str(depth))
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
                 
                 # Create extended vector
@@ -270,5 +270,5 @@ class TrafficLightDetection:
                 self.prev_semaphore_box = None
 
         # print("Fence calcolata: ", traffic_light_fences) 
-        logging.debug("Fence calcolata: ", traffic_light_fences)
+        logging.debug("Fence calcolata: %s", str(traffic_light_fences))
         return traffic_light_fences

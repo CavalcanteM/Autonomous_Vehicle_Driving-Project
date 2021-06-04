@@ -918,7 +918,7 @@ def exec_waypoint_nav_demo(args):
                     pedestrian_pos.append(agent.pedestrian)
             
             #print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
-            logging.info("Lead vehicle from of the current frame: ", prev_lead)
+            logging.info("Lead vehicle from of the current frame: %s", str(prev_lead))
 
             # Transform obstacles to world
             obstacles_box_pts = []
@@ -969,7 +969,7 @@ def exec_waypoint_nav_demo(args):
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
                     # print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
-                    logging.debug("Veicolo trovato", bp.bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
+                    logging.debug("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
