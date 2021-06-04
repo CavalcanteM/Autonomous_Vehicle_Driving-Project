@@ -34,7 +34,8 @@ class BehaviouralPlanner:
 
     def add_traffic_light_fences(self, traffic_light_fences):
         for fence in traffic_light_fences:
-            self._traffic_light_fences.append(fence)
+            # self._traffic_light_fences.append(fence)
+            self._traffic_light_fences.insert(0, fence)
 
     def get_follow_lead_vehicle(self):
         return self._follow_lead_vehicle
@@ -101,8 +102,10 @@ class BehaviouralPlanner:
             # along the waypoints.
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
-            goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
-            
+            if len(self._traffic_light_fences) > 0:
+                goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
+            else:
+                traffic_light_found = False
             # Check for collisions
             if self._obstacle_on_lane:
                 self._state = OBSTACLE_AVOIDANCE
@@ -131,7 +134,10 @@ class BehaviouralPlanner:
 
             # Finally, check the index set between closest_index and goal_index
             # for stop signs, and compute the goal state accordingly
-            goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
+            if len(self._traffic_light_fences) > 0:
+                goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
+            else:
+                traffic_light_found = False
             #self._goal_index = goal_index
             #self._goal_state = waypoints[goal_index]
 
@@ -167,6 +173,7 @@ class BehaviouralPlanner:
                 self._state = STAY_STOPPED
                 self._stop_count = 0
                 print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
+            
 
         # In this state, check to see if we have stayed stopped for at
         # least STOP_COUNTS number of cycles. If so, we can now leave
