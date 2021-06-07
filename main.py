@@ -931,8 +931,9 @@ def exec_waypoint_nav_demo(args):
             pedestrian_box_pts = []
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
-                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                pedestrian_box_pts.append(current_box_pts)
+                if abs(round(np.sin(current.transform.rotation.yaw * pi / 180))) == abs(round(np.cos(current_yaw))):
+                    current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                    pedestrian_box_pts.append(current_box_pts)
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -985,9 +986,10 @@ def exec_waypoint_nav_demo(args):
                 # Perform collision checking.
                 # collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
                 collision_check_array = lp._collision_checker.collision_check(paths, pedestrian_box_pts)
-                logging.info(str(np.any(collision_check_array == False)))
+                
                 if np.any(collision_check_array == False):
                     bp._obstacle_on_lane = True
+                    logging.info("OBSTACLE ON LANE")
                 else:
                     bp._obstacle_on_lane = False
                 # EndEditGroup2
