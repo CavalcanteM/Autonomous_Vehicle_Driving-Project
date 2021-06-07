@@ -172,13 +172,8 @@ class BehaviouralPlanner:
         # state.
         elif self._state == DECELERATE_TO_STOP:
             #print("DECELERATE_TO_STOP")
-            if not self._obstacle_on_lane:
-                self.state = FOLLOW_LANE
-                logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
-            if self._is_traffic_light_green:
-                # self._stopsign_fences.clear()
+            if not self._obstacle_on_lane and self._is_traffic_light_green:
                 self._state = FOLLOW_LANE
-                # print("[INFO] DECELERATE_TO_STOP => FOLLOW_LANE")
                 logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED

@@ -47,12 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 105         #  spawn index for player 13 default
-DESTINATION_INDEX = 137       # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 110         #  spawn index for player 13 default
+DESTINATION_INDEX = 140      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 1      # total number of pedestrians to spawn
-NUM_VEHICLES           = 1      # total number of vehicles to spawn
+NUM_PEDESTRIANS        = 80      # total number of pedestrians to spawn
+NUM_VEHICLES           = 50      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -918,7 +918,7 @@ def exec_waypoint_nav_demo(args):
                     pedestrian_pos.append(agent.pedestrian)
             
             #print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
-            logging.info("Lead vehicle from of the current frame: %s", str(prev_lead))
+            #logging.info("Lead vehicle from of the current frame: %s", str(prev_lead))
 
             # Transform obstacles to world
             obstacles_box_pts = []
@@ -985,8 +985,8 @@ def exec_waypoint_nav_demo(args):
                 # Perform collision checking.
                 # collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
                 collision_check_array = lp._collision_checker.collision_check(paths, pedestrian_box_pts)
-                
-                if bp._state == behavioural_planner.FOLLOW_LANE and np.any(collision_check_array == False):
+                logging.info(str(np.any(collision_check_array == False)))
+                if np.any(collision_check_array == False):
                     bp._obstacle_on_lane = True
                 else:
                     bp._obstacle_on_lane = False
