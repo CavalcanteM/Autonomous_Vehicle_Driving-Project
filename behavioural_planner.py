@@ -26,6 +26,7 @@ class BehaviouralPlanner:
         self._lookahead_collision_index     = 0
         self._traffic_light_fences          = []
         self._is_traffic_light_green        = True
+        self._pedestrians                   = None
     
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -95,7 +96,6 @@ class BehaviouralPlanner:
         # complete, and examine the check_for_stop_signs() function to
         # understand it.
         if self._state == FOLLOW_LANE:
-            #print("FOLLOW_LANE")
             # First, find the closest index to the ego vehicle.
             closest_len, closest_index = get_closest_index(waypoints, ego_state)
 
@@ -103,65 +103,32 @@ class BehaviouralPlanner:
             # along the waypoints.
             goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             while waypoints[goal_index][2] <= 0.1: goal_index += 1
+
+            # Successivamente controlliamo se ci sono ostacoli o semafori rossi, in caso affermativo modifichiamo il _goal_state
+            # per permettere al veicolo di fermarsi nel punto desiderato
             if len(self._traffic_light_fences) > 0:
                 goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
             else:
                 traffic_light_found = False
-            # Check for collisions
-            if self._obstacle_on_lane:
-                # self._state = OBSTACLE_AVOIDANCE
-                self._state = DECELERATE_TO_STOP
-                self._goal_index = goal_index
-                self._goal_state = waypoints[goal_index]
-                logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
-
+            
             # Check for traffic lights
             if traffic_light_found:
-                self._goal_state = goal    
+                self._goal_state = goal
                 self._state = DECELERATE_TO_STOP
                 self._traffic_light_fences.clear()
-                # print("[DEBUG] Waypoint ", self._goal_state)
-                logging.debug("Waypoint %s", str(self._goal_state))
-                # print("[INFO] FOLLOW_LANE => DECELERATE_TO_STOP")
+                logging.info("Waypoint %s", str(self._goal_state))
                 logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
-            else:
-                self._goal_index = goal_index
-                self._goal_state = waypoints[goal_index]
+
+            # Check for collisions
+            if self._obstacle_on_lane:
+                goal, pedestrian_found = self.check_pedestrian(ego_state)
+                if pedestrian_found:
+                    logging.info("OBSTACLE ON LANE")
+                    self._goal_state = self.min_distance(ego_state, goal)
+                    self._state = DECELERATE_TO_STOP
+                    logging.info("FOLLOW_LANE => DECELERATE_TO_STOP")
             
-        elif self._state == OBSTACLE_AVOIDANCE:
-            # First, find the closest index to the ego vehicle.
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
-
-            # Next, find the goal index that lies within the lookahead distance
-            # along the waypoints.
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-            while waypoints[goal_index][2] <= 0.1: goal_index += 1
-
-            # Finally, check the index set between closest_index and goal_index
-            # for stop signs, and compute the goal state accordingly
-            if len(self._traffic_light_fences) > 0:
-                goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
-            else:
-                traffic_light_found = False
-            #self._goal_index = goal_index
-            #self._goal_state = waypoints[goal_index]
-
-            # Check traffic lights
-            if traffic_light_found:
-                self._goal_state = goal    
-                self._state = DECELERATE_TO_STOP
-                self._traffic_light_fences.clear()
-                # print("[DEBUG] Waypoint ", self._goal_state)
-                logging.debug("Waypoint %s", str(self._goal_state))
-                # print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
-                logging.info("OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
-            # Check collisions
-            elif not self._obstacle_on_lane:
-                self._state = FOLLOW_LANE
-                self._goal_index = goal_index
-                self._goal_state = waypoints[goal_index]
-            # There are no obstacles and traffic lights
-            else:
+            if self._state != DECELERATE_TO_STOP:
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
 
@@ -171,14 +138,16 @@ class BehaviouralPlanner:
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
         # state.
         elif self._state == DECELERATE_TO_STOP:
-            #print("DECELERATE_TO_STOP")
+            if self._obstacle_on_lane:
+                goal, pedestrian_found = self.check_pedestrian(ego_state)
+                if not pedestrian_found:
+                    self._obstacle_on_lane = False
+
             if not self._obstacle_on_lane and self._is_traffic_light_green:
                 self._state = FOLLOW_LANE
                 logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
-                # self._stop_count = 0
-                # print("[INFO] DECELERATE_TO_STOP => STAY_STOPPED")
                 logging.info("DECELERATE_TO_STOP => STAY_STOPPED")
 
         # In this state, check to see if we have stayed stopped for at
@@ -190,8 +159,13 @@ class BehaviouralPlanner:
             # passed the traffic light, return to lane following.
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            if self._is_traffic_light_green: 
-                # self._stopsign_fences.clear()
+            if self._obstacle_on_lane:
+                goal, pedestrian_found = self.check_pedestrian(ego_state)
+                if not pedestrian_found:
+                    self._obstacle_on_lane = False
+            logging.info("OSTACOLO: %d", self._obstacle_on_lane)
+            logging.info("SEMAFORO: %d", self._is_traffic_light_green)
+            if not self._obstacle_on_lane and self._is_traffic_light_green: 
                 closest_len, closest_index = get_closest_index(waypoints, ego_state)
                 goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
                 while waypoints[goal_index][2] <= 0.1: goal_index += 1
@@ -211,6 +185,43 @@ class BehaviouralPlanner:
                 self._state = FOLLOW_LANE
                 # print("[INFO] STAY_STOPPED => FOLLOW_LANE")
                 logging.info("STAY_STOPPED => FOLLOW_LANE")
+        
+        # elif self._state == OBSTACLE_AVOIDANCE:
+        #     # First, find the closest index to the ego vehicle.
+        #     closest_len, closest_index = get_closest_index(waypoints, ego_state)
+
+        #     # Next, find the goal index that lies within the lookahead distance
+        #     # along the waypoints.
+        #     goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+        #     while waypoints[goal_index][2] <= 0.1: goal_index += 1
+
+        #     # Finally, check the index set between closest_index and goal_index
+        #     # for stop signs, and compute the goal state accordingly
+        #     if len(self._traffic_light_fences) > 0:
+        #         goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
+        #     else:
+        #         traffic_light_found = False
+        #     #self._goal_index = goal_index
+        #     #self._goal_state = waypoints[goal_index]
+
+        #     # Check traffic lights
+        #     if traffic_light_found:
+        #         self._goal_state = goal    
+        #         self._state = DECELERATE_TO_STOP
+        #         self._traffic_light_fences.clear()
+        #         # print("[DEBUG] Waypoint ", self._goal_state)
+        #         logging.debug("Waypoint %s", str(self._goal_state))
+        #         # print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
+        #         logging.info("OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
+        #     # Check collisions
+        #     elif not self._obstacle_on_lane:
+        #         self._state = FOLLOW_LANE
+        #         self._goal_index = goal_index
+        #         self._goal_state = waypoints[goal_index]
+        #     # There are no obstacles and traffic lights
+        #     else:
+        #         self._goal_index = goal_index
+        #         self._goal_state = waypoints[goal_index]
                 
         else:
             raise ValueError('Invalid state value.')
@@ -299,10 +310,10 @@ class BehaviouralPlanner:
                     # print("WP1 ", wp_1)
                     # print("WP2 ", wp_2)
                     # print("Intersect ", intersect_flag)
-                    logging.debug("Fence %s", str(traffic_light_fence))
-                    logging.debug("WP1 %s", str(wp_1))
-                    logging.debug("WP2 %s", str(wp_2))
-                    logging.debug("Intersect %s", str(intersect_flag))
+                    logging.info("Fence %s", str(traffic_light_fence))
+                    logging.info("WP1 %s", str(wp_1))
+                    logging.info("WP2 %s", str(wp_2))
+                    logging.info("Intersect %s", str(intersect_flag))
                     goal_index = i
                     current_yaw = ego_state[2]
                     if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
@@ -317,6 +328,63 @@ class BehaviouralPlanner:
 
         return goal_index, False
     # EndEditGroup2
+
+
+    # EditGroup2
+    # Checks the given segment of the waypoint list to see if it
+    # intersects with a semaphore stop line. If any index does, return the
+    # new goal state accordingly.
+    def check_pedestrian(self, ego_state):
+        """Checks for a stop sign that is intervening the goal path.
+
+        Checks for a stop sign that is intervening the goal path. Returns a new
+        goal index (the current goal index is obstructed by a stop line), and a
+        boolean flag indicating if a stop sign obstruction was found.
+        
+        args:
+            waypoints: current waypoints to track. (global frame)
+                length and speed in m and m/s.
+                (includes speed to track at each x,y location.)
+                format: [[x0, y0, v0],
+                         [x1, y1, v1],
+                         ...
+                         [xn, yn, vn]]
+                example:
+                    waypoints[2][1]: 
+                    returns the 3rd waypoint's y position
+
+                    waypoints[5]:
+                    returns [x5, y5, v5] (6th waypoint)
+                closest_index: index of the waypoint which is closest to the vehicle.
+                    i.e. waypoints[closest_index] gives the waypoint closest to the vehicle.
+                goal_index (current): Current goal index for the vehicle to reach
+                    i.e. waypoints[goal_index] gives the goal waypoint
+        variables to set:
+            [goal_index (updated), stop_sign_found]: 
+                goal_index (updated): Updated goal index for the vehicle to reach
+                    i.e. waypoints[goal_index] gives the goal waypoint
+                stop_sign_found: Boolean flag for whether a stop sign was found or not
+        """
+        for pedestrian in self._pedestrians:
+            if abs(round(np.cos(ego_state[2]))) == 1 and abs(np.cos(pedestrian.transform.rotation.yaw * math.pi / 180)) < 1/math.sqrt(2):
+                if np.sign(round(np.cos(ego_state[2]))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                    logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
+                    return [pedestrian.transform.location.x - 3, ego_state[1], 0], True
+                else:
+                    logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
+                    return [pedestrian.transform.location.x + 3, ego_state[1], 0], True
+            
+            if abs(round(np.sin(ego_state[2]))) == 1 and abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < 1/math.sqrt(2):
+                if np.sign(round(np.sin(ego_state[2]))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                    logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
+                    return [ego_state[0], pedestrian.transform.location.y - 3, 0], True
+                else:
+                    logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
+                    return [ego_state[0], pedestrian.transform.location.y + 3, 0], True
+        
+        return None, False
+    # EndEditGroup2
+
 
     # Gets the goal index in the list of waypoints, based on the lookahead and
     # the current ego state. In particular, find the earliest waypoint that has accumulated
@@ -486,6 +554,19 @@ class BehaviouralPlanner:
 
     #         self._follow_lead_vehicle = False
     # EndEditGroup2
+
+    def min_distance(self, ego_state, goal):
+        dist1 = np.linalg.norm([ego_state[0] - goal[0], 
+                                    ego_state[1] - goal[1]])
+        dist2 = np.linalg.norm([ego_state[0] - self._goal_state[0], 
+                                    ego_state[1] - self._goal_state[1]])
+        logging.info("dist1: %d", dist1)
+        logging.info("dist2: %d", dist2)
+        
+        if dist1 < dist2:
+            return goal
+        else:
+            return self._goal_state
 
 
 # Compute the waypoint index that is closest to the ego vehicle, and return

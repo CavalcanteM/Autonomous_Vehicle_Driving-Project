@@ -47,11 +47,11 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 110         #  spawn index for player 13 default
-DESTINATION_INDEX = 140      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 137         #  spawn index for player 13 default
+DESTINATION_INDEX = 106      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 80      # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 200      # total number of pedestrians to spawn
 NUM_VEHICLES           = 50      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
@@ -605,7 +605,17 @@ def exec_waypoint_nav_demo(args):
                     
                     middle_point = [(start_intersection[0] + end_intersection[0]) /2,  (start_intersection[1] + end_intersection[1]) /2]
 
-                    centering = 0.75
+                    turn_angle = math.atan2((end_intersection[1] - start_intersection[1]),(start_intersection[0] - end_intersection[0]))
+                    print(turn_angle,  pi / 4, middle_point[0] - center_intersection[0] < 0)
+
+                    turn_adjust = 0 < turn_angle < pi / 2 and middle_point[0] - center_intersection[0] < 0
+                    turn_adjust_2 =  pi / 2 < turn_angle < pi and middle_point[0] - center_intersection[0] < 0
+
+                    quater_part = - pi / 2 < turn_angle < 0 
+                    neg_turn_adjust = quater_part and middle_point[0] - center_intersection[0] < 0
+                    neg_turn_adjust_2 = - pi < turn_angle < -pi/2 and middle_point[0] - center_intersection[0] < 0
+                    
+                    centering = 0.55 if turn_adjust or neg_turn_adjust else 0.75 
 
                     middle_intersection = [(centering*middle_point[0] + (1-centering)*center_intersection[0]),  (centering*middle_point[1] + (1-centering)*center_intersection[1])]
 
@@ -622,19 +632,23 @@ def exec_waypoint_nav_demo(args):
 
                     x = start_intersection[0]
                     
-                    center_x = -coeffs[0]/2
-                    center_y = -coeffs[1]/2
+                    internal_turn = 0 if turn_adjust or turn_adjust_2 or quater_part  else 1
+                    
+                    center_x = -coeffs[0]/2 + internal_turn * 0.10
+                    center_y = -coeffs[1]/2 + internal_turn * 0.10
 
                     r = sqrt(center_x**2 + center_y**2 - coeffs[2])
 
                     theta_start = math.atan2((start_intersection[1] - center_y),(start_intersection[0] - center_x))
                     theta_end = math.atan2((end_intersection[1] - center_y),(end_intersection[0] - center_x))
 
-                    theta = theta_start
-
                     start_to_end = 1 if theta_start < theta_end else -1
 
-                    while (start_to_end==1 and theta < theta_end) or (start_to_end==-1 and theta > theta_end):
+                    theta_step = (abs(theta_end - theta_start) * start_to_end) /20
+
+                    theta = theta_start + 6*theta_step
+
+                    while (start_to_end==1 and theta < theta_end - 3*theta_step) or (start_to_end==-1 and theta > theta_end - 6*theta_step):
                         waypoint_on_lane = [0,0,0]
 
                         waypoint_on_lane[0] = center_x + r * cos(theta)
@@ -642,7 +656,7 @@ def exec_waypoint_nav_demo(args):
                         waypoint_on_lane[2] = turn_speed
 
                         waypoints.append(waypoint_on_lane)
-                        theta += (abs(theta_end - theta_start) * start_to_end) / 10
+                        theta += theta_step 
                     
                     turn_cooldown = 4
             else:
@@ -931,9 +945,9 @@ def exec_waypoint_nav_demo(args):
             pedestrian_box_pts = []
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
-                if abs(round(np.sin(current.transform.rotation.yaw * pi / 180))) == abs(round(np.cos(current_yaw))):
-                    current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                    pedestrian_box_pts.append(current_box_pts)
+                #if abs(round(np.cos(current.transform.rotation.yaw * pi / 180), 1)) != abs(round(np.cos(current_yaw),1)):
+                current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
+                pedestrian_box_pts.append(current_box_pts)
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -970,7 +984,7 @@ def exec_waypoint_nav_demo(args):
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
                     # print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
-                    logging.debug("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
+                    logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
@@ -984,24 +998,26 @@ def exec_waypoint_nav_demo(args):
 
                 # EditGroup2
                 # Perform collision checking.
-                # collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
-                collision_check_array = lp._collision_checker.collision_check(paths, pedestrian_box_pts)
-                
-                if np.any(collision_check_array == False):
-                    bp._obstacle_on_lane = True
-                    logging.info("OBSTACLE ON LANE")
-                else:
-                    bp._obstacle_on_lane = False
-                # EndEditGroup2
+                collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
                 
                 # Compute the best local path.
                 best_index = lp._collision_checker.select_best_path_index(paths, collision_check_array, bp._goal_state)
+                
                 # If no path was feasible, continue to follow the previous best path.
                 if best_index == None:
                     best_path = lp._prev_best_path
                 else:
                     best_path = paths[best_index]
                     lp._prev_best_path = best_path
+                
+                pedestrians_in_collision = lp._collision_checker.pedestrian_collision_check(paths, pedestrian_box_pts)
+
+                if len(pedestrians_in_collision) > 0:
+                    bp._obstacle_on_lane = True
+                    bp._pedestrians = [pedestrian_pos[x] for x in pedestrians_in_collision]
+                else:
+                    bp._obstacle_on_lane = False
+                # EndEditGroup2
 
                 if best_path is not None:
                     # Compute the velocity profile for the path, and compute the waypoints.
