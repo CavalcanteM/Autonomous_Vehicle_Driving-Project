@@ -1010,11 +1010,19 @@ def exec_waypoint_nav_demo(args):
                     best_path = paths[best_index]
                     lp._prev_best_path = best_path
                 
-                pedestrians_in_collision = lp._collision_checker.pedestrian_collision_check(paths, pedestrian_box_pts)
+                # pedestrians_in_collision = lp._collision_checker.pedestrian_collision_check(paths, pedestrian_box_pts)
 
-                if len(pedestrians_in_collision) > 0:
+                # if len(pedestrians_in_collision) > 0:
+                #     bp._obstacle_on_lane = True
+                #     bp._pedestrians = [pedestrian_pos[x] for x in pedestrians_in_collision]
+                # else:
+                #     bp._obstacle_on_lane = False
+                # Perform collision checking
+                collision_check_array = lp._collision_checker.collision_check(paths, pedestrian_box_pts)
+
+                if np.any(collision_check_array[1:-1] == False):
                     bp._obstacle_on_lane = True
-                    bp._pedestrians = [pedestrian_pos[x] for x in pedestrians_in_collision]
+                    logging.info("TROVATO UN PEDONE")
                 else:
                     bp._obstacle_on_lane = False
                 # EndEditGroup2
