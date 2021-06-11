@@ -48,11 +48,11 @@ import logging
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
 PLAYER_START_INDEX = 137         #  spawn index for player 13 default
-DESTINATION_INDEX = 106      # Setting a Destination HERE 91 default
+DESTINATION_INDEX = 90      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 200      # total number of pedestrians to spawn
-NUM_VEHICLES           = 50      # total number of vehicles to spawn
+NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -844,6 +844,8 @@ def exec_waypoint_nav_demo(args):
 
             if not traffic_light_detected:
                 traffic_light_fences = []
+                if is_green:
+                    bp.set_is_traffic_light_green(True)
             elif is_green: #go
                 traffic_light_fences = []
                 bp.set_is_traffic_light_green(True)
@@ -930,9 +932,6 @@ def exec_waypoint_nav_demo(args):
                 # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
                     pedestrian_pos.append(agent.pedestrian)
-            
-            #print("[INFO] Lead vehicle from of the current frame: ", prev_lead)
-            #logging.info("Lead vehicle from of the current frame: %s", str(prev_lead))
 
             # Transform obstacles to world
             obstacles_box_pts = []
@@ -974,16 +973,8 @@ def exec_waypoint_nav_demo(args):
 
                 # EditGroup2
                 # Check to see if we need to follow the lead vehicle.
-                # lead_index = None
-                # for index in range(len(lead_car_pos)):
-                #     bp.check_for_lead_vehicle(ego_state, lead_car_pos[index])
-                #     if bp.get_follow_lead_vehicle():
-                #         lead_index = index
-                #         print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[index])
-                #         break
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
-                    # print("Veicolo trovato: ", bp.get_follow_lead_vehicle(), lead_car_pos[lead_index])
                     logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
                 # EndEditGroup2
 

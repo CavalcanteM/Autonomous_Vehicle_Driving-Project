@@ -128,7 +128,7 @@ class TrafficLightDetection:
                             self._num_stop +=1
                         self.prev_semaphore_box = current_box
                     else:
-                        # print("threshold violata")
+
                         logging.debug("Threshold violata")
                         self.prev_semaphore_box = None
                         self.count_semaphore_detections = 0
@@ -140,13 +140,14 @@ class TrafficLightDetection:
             self.count_missdetection += 1
 
         if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
-                # print("missdetection")
+                
                 logging.debug("Missdetection")
                 self.prev_semaphore_box = None
                 self.count_semaphore_detections = 0      
                 self.count_missdetection = 0
                 self._num_go = 0
                 self._num_stop = 0
+                return False, boxes, True
 
         if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
             is_green = self._num_go > self._num_stop
@@ -155,7 +156,7 @@ class TrafficLightDetection:
             self._num_go = 0
             self._num_stop = 0
             return True, boxes, is_green
-        return False, boxes, True
+        return False, boxes, False
            
 
     def get_traffic_light_fences(self, depth_data, current_x, current_y, current_yaw):
@@ -172,8 +173,7 @@ class TrafficLightDetection:
             w = (xmax-xmin)
             xmin = xmin - 4*w
             xmax = xmax + 4*w
-            # ymin = ymin - (ymax-ymin)
-            # ymax = ymax + (ymax-ymin)
+            
             ymin = ymin - 2*w
             ymax = ymax - 2*w
 
@@ -193,17 +193,16 @@ class TrafficLightDetection:
             pixel = [x , y, 1]
             pixel = np.reshape(pixel, (3,1))
             
-            # print("PROP ", prop)
             logging.debug("PROP %s", str(prop))
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
-            # print("Depth prima", depth)
+
             logging.debug("Depth prima %s", str(depth))
             if depth != 1000.0 and prop > 0.5:
                 alpha = prop * 90 - 45
                 alpha = alpha / 180 * pi
                 depth = depth * cos(alpha)
-                # print("Depth dopo", depth)
+                
                 logging.debug("Depth dopo %s", str(depth))
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
                 
@@ -254,21 +253,18 @@ class TrafficLightDetection:
 
                 if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
                     spos = np.add(spos, spos_shift)
-                    # spos = np.subtract(spos, before)
+                    
                 elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
                     spos = np.subtract(spos, spos_shift)
-                    # spos = np.add(spos,before)
+                    
                 else:
                     if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
                         spos = np.add(spos, spos_shift)
-                        # spos = np.subtract(spos, before)
                     else:
                         spos = np.subtract(spos, spos_shift)
-                        # spos = np.add(spos, before)
 
                 traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
                 self.prev_semaphore_box = None
 
-        # print("Fence calcolata: ", traffic_light_fences) 
         logging.debug("Fence calcolata: %s", str(traffic_light_fences))
         return traffic_light_fences
