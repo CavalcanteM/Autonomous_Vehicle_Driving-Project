@@ -11,6 +11,12 @@ import sys
 sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
 from yolo import YOLO
 
+# EditGroup2
+# Constants
+NUM_SEMAPHORE_CHECKS = 13
+SCORE_THRESHOLD = 0.20
+# EndEditGroup2
+
 # Utils : X - Rotation
 def rotate_x(angle):
     R = np.mat([[ 1,         0,           0],
@@ -102,7 +108,8 @@ class TrafficLightDetection:
         if len(boxes) > 0:
             current_box = boxes[0]
 
-            if current_box.get_score() > self.SCORE_THRESHOLD:
+            #if current_box.get_score() > self.SCORE_THRESHOLD:
+            if current_box.get_score() > SCORE_THRESHOLD:
                 self.count_missdetection = 0
                 # First time semaphore is detected
                 if self.prev_semaphore_box == None:
@@ -139,8 +146,8 @@ class TrafficLightDetection:
         elif self.prev_semaphore_box is not None:
             self.count_missdetection += 1
 
-        if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
-                
+        # if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
+        if self.count_missdetection == int(0.3*NUM_SEMAPHORE_CHECKS):            
                 logging.debug("Missdetection")
                 self.prev_semaphore_box = None
                 self.count_semaphore_detections = 0      
@@ -149,7 +156,8 @@ class TrafficLightDetection:
                 self._num_stop = 0
                 return False, boxes, True
 
-        if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
+        #if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
+        if self.count_semaphore_detections == NUM_SEMAPHORE_CHECKS or self._num_go >= int(NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(NUM_SEMAPHORE_CHECKS/2)+1:
             is_green = self._num_go > self._num_stop
             self.count_semaphore_detections = 0
             self.count_missdetection = 0

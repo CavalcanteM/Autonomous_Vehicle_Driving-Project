@@ -12,6 +12,12 @@ OBSTACLE_AVOIDANCE = 3
 STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
 # STOP_COUNTS = 10
+# EditGroup2
+# Costanti per gestione pedoni
+HALF_LANE_WIDTH = 2
+BRAKE_DISTANCE = 3
+DIRECTION_SCORE = 0.95
+# EndEditGroup2
 
 class BehaviouralPlanner:
     def __init__(self, lookahead, lead_vehicle_lookahead):
@@ -363,22 +369,22 @@ class BehaviouralPlanner:
             pedestrian_y = pedestrian.transform.location.y
 
             # Caso in cui andiamo dritti lungo un rettilineo lungo le x
-            if abs(np.cos(ego_state[2])) > 0.95 and abs(np.cos(pedestrian_yaw)) < np.cos(math.pi / 6):
-                if (ego_state[1] - 2 < pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) < 0) or \
-                        (ego_state[1] + 2 > pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) > 0):
+            if abs(np.cos(ego_state[2])) > DIRECTION_SCORE and abs(np.cos(pedestrian_yaw)) < np.cos(math.pi / 6):
+                if (ego_state[1] - HALF_LANE_WIDTH < pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) < 0) or \
+                        (ego_state[1] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) > 0):
                     if np.sign(round(np.cos(ego_state[2]))) > 0: #mi sto muovendo lungo le x positive, verso destra
-                        return [pedestrian_x - 3, ego_state[1], 0], True
+                        return [pedestrian_x - BRAKE_DISTANCE, ego_state[1], 0], True
                     else:
-                        return [pedestrian_x + 3, ego_state[1], 0], True
+                        return [pedestrian_x + BRAKE_DISTANCE, ego_state[1], 0], True
             
             # Caso in cui andiamo dritti lungo un rettilineo lungo le y
-            elif abs(np.sin(ego_state[2])) > 0.95 and abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
-                if (ego_state[0] - 2 < pedestrian_x and np.sign(np.round(np.cos(pedestrian_yaw))) < 0) or \
-                        (ego_state[0] + 2 > pedestrian_y and np.sign(np.round(np.cos(pedestrian_yaw))) > 0):
+            elif abs(np.sin(ego_state[2])) > DIRECTION_SCORE and abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
+                if (ego_state[0] - HALF_LANE_WIDTH < pedestrian_x and np.sign(np.round(np.cos(pedestrian_yaw))) < 0) or \
+                        (ego_state[0] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.cos(pedestrian_yaw))) > 0):
                     if np.sign(round(np.sin(ego_state[2]))) > 0: #mi sto muovendo lungo le y positive, verso il basso
-                        return [ego_state[0], pedestrian_y - 3, 0], True
+                        return [ego_state[0], pedestrian_y - BRAKE_DISTANCE, 0], True
                     else:
-                        return [ego_state[0], pedestrian_y + 3, 0], True
+                        return [ego_state[0], pedestrian_y + BRAKE_DISTANCE, 0], True
             
             # Caso in cui sono in curva
             else:
