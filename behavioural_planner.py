@@ -150,14 +150,20 @@ class BehaviouralPlanner:
             
             if self._obstacle_on_lane:
                 goal, pedestrian_found = self.check_pedestrian(ego_state, waypoints, goal_index)
-                if not pedestrian_found:
-                    self._obstacle_on_lane = False
-                else:
-                    self._goal_state = goal
-                    
-            if not self._obstacle_on_lane and self._is_traffic_light_green:
+                # if not pedestrian_found:
+                #     self._obstacle_on_lane = False
+                # else:
+                #     self._goal_state = goal
+            else:
+                pedestrian_found = False
+
+            if pedestrian_found:
+                self._goal_state = goal
+
+            elif not pedestrian_found and self._is_traffic_light_green:
                 self._state = FOLLOW_LANE
                 logging.info("DECELERATE_TO_STOP => FOLLOW_LANE")
+
             elif abs(closed_loop_speed) <= STOP_THRESHOLD:
                 self._state = STAY_STOPPED
                 logging.info("DECELERATE_TO_STOP => STAY_STOPPED")
@@ -177,10 +183,10 @@ class BehaviouralPlanner:
             
             if self._obstacle_on_lane:
                 goal, pedestrian_found = self.check_pedestrian(ego_state, waypoints, goal_index)
-                if not pedestrian_found:
-                    self._obstacle_on_lane = False
+                # if not pedestrian_found:
+                #     self._obstacle_on_lane = False
             
-            if not self._obstacle_on_lane and self._is_traffic_light_green: 
+            if not pedestrian_found and self._is_traffic_light_green: 
                 # We've stopped for the required amount of time, so the new goal 
                 # index for the stop line is not relevant. Use the goal index
                 # that is the lookahead distance away. 
@@ -391,7 +397,7 @@ class BehaviouralPlanner:
                 #La curva sarà lungo l'asse delle x
                 if abs(waypoints[goal_index][0] - ego_state[0]) > abs(waypoints[goal_index][1] - ego_state[1]):
                     # Un pedone che ha intersecato uno dei nostri path ha una yaw perpendicolare (o quasi) a noi
-                    if abs(np.cos(pedestrian.transform.rotation.yaw * math.pi / 180)) < 1/math.sqrt(2):
+                    if abs(np.cos(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.cos(math.pi / 6):
                         # Sto girando verso destra
                         if np.sign(waypoints[goal_index][0] - ego_state[0]) > 0:
                             logging.info("CURVA VERSO X POSITIVE")
@@ -403,7 +409,7 @@ class BehaviouralPlanner:
                             logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
                             return [pedestrian.transform.location.x + 3, waypoints[goal_index][1], 0], True
                 else:
-                    if abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < 1/math.sqrt(2):
+                    if abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
                         # sto girando verso il basso
                         if np.sign(waypoints[goal_index][1] - ego_state[1]) > 0: 
                             logging.info("CURVA VERSO Y POSITIVE")
