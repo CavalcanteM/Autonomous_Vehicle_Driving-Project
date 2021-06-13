@@ -185,7 +185,9 @@ class BehaviouralPlanner:
                 goal, pedestrian_found = self.check_pedestrian(ego_state, waypoints, goal_index)
                 # if not pedestrian_found:
                 #     self._obstacle_on_lane = False
-            
+            else:
+                pedestrian_found = False
+                
             if not pedestrian_found and self._is_traffic_light_green: 
                 # We've stopped for the required amount of time, so the new goal 
                 # index for the stop line is not relevant. Use the goal index
@@ -201,43 +203,6 @@ class BehaviouralPlanner:
 
                 self._state = FOLLOW_LANE
                 logging.info("STAY_STOPPED => FOLLOW_LANE")
-        
-        # elif self._state == OBSTACLE_AVOIDANCE:
-        #     # First, find the closest index to the ego vehicle.
-        #     closest_len, closest_index = get_closest_index(waypoints, ego_state)
-
-        #     # Next, find the goal index that lies within the lookahead distance
-        #     # along the waypoints.
-        #     goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-        #     while waypoints[goal_index][2] <= 0.1: goal_index += 1
-
-        #     # Finally, check the index set between closest_index and goal_index
-        #     # for stop signs, and compute the goal state accordingly
-        #     if len(self._traffic_light_fences) > 0:
-        #         goal, traffic_light_found = self.check_for_traffic_lights(waypoints, closest_index, goal_index, ego_state)
-        #     else:
-        #         traffic_light_found = False
-        #     #self._goal_index = goal_index
-        #     #self._goal_state = waypoints[goal_index]
-
-        #     # Check traffic lights
-        #     if traffic_light_found:
-        #         self._goal_state = goal    
-        #         self._state = DECELERATE_TO_STOP
-        #         self._traffic_light_fences.clear()
-        #         # print("[DEBUG] Waypoint ", self._goal_state)
-        #         logging.debug("Waypoint %s", str(self._goal_state))
-        #         # print("[INFO] OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
-        #         print("OBSTACLE_AVOIDANCE => DECELERATE_TO_STOP")
-        #     # Check collisions
-        #     elif not self._obstacle_on_lane:
-        #         self._state = FOLLOW_LANE
-        #         self._goal_index = goal_index
-        #         self._goal_state = waypoints[goal_index]
-        #     # There are no obstacles and traffic lights
-        #     else:
-        #         self._goal_index = goal_index
-        #         self._goal_state = waypoints[goal_index]
                 
         else:
             raise ValueError('Invalid state value.')
@@ -375,27 +340,30 @@ class BehaviouralPlanner:
             pedestrian_y = pedestrian.transform.location.y
 
             # Caso in cui andiamo dritti lungo un rettilineo lungo le x
-            if abs(np.cos(ego_state[2])) > DIRECTION_SCORE and abs(np.cos(pedestrian_yaw)) < np.cos(math.pi / 6):
-                if (ego_state[1] - HALF_LANE_WIDTH < pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) < 0) or \
-                        (ego_state[1] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) > 0):
-                    if np.sign(round(np.cos(ego_state[2]))) > 0: #mi sto muovendo lungo le x positive, verso destra
-                        return [pedestrian_x - BRAKE_DISTANCE, ego_state[1], 0], True
-                    else:
-                        return [pedestrian_x + BRAKE_DISTANCE, ego_state[1], 0], True
+            if abs(np.cos(ego_state[2])) > DIRECTION_SCORE:
+                if abs(np.cos(pedestrian_yaw)) < np.cos(math.pi / 6):
+                    if (ego_state[1] - HALF_LANE_WIDTH < pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) < 0) or \
+                            (ego_state[1] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.sin(pedestrian_yaw))) > 0):
+                        if np.sign(round(np.cos(ego_state[2]))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                            return [pedestrian_x - BRAKE_DISTANCE, ego_state[1], 0], True
+                        else:
+                            return [pedestrian_x + BRAKE_DISTANCE, ego_state[1], 0], True
             
             # Caso in cui andiamo dritti lungo un rettilineo lungo le y
-            elif abs(np.sin(ego_state[2])) > DIRECTION_SCORE and abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
-                if (ego_state[0] - HALF_LANE_WIDTH < pedestrian_x and np.sign(np.round(np.cos(pedestrian_yaw))) < 0) or \
-                        (ego_state[0] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.cos(pedestrian_yaw))) > 0):
-                    if np.sign(round(np.sin(ego_state[2]))) > 0: #mi sto muovendo lungo le y positive, verso il basso
-                        return [ego_state[0], pedestrian_y - BRAKE_DISTANCE, 0], True
-                    else:
-                        return [ego_state[0], pedestrian_y + BRAKE_DISTANCE, 0], True
+            elif abs(np.sin(ego_state[2])) > DIRECTION_SCORE:
+                if abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
+                    if (ego_state[0] - HALF_LANE_WIDTH < pedestrian_x and np.sign(np.round(np.cos(pedestrian_yaw))) < 0) or \
+                            (ego_state[0] + HALF_LANE_WIDTH > pedestrian_y and np.sign(np.round(np.cos(pedestrian_yaw))) > 0):
+                        if np.sign(round(np.sin(ego_state[2]))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                            return [ego_state[0], pedestrian_y - BRAKE_DISTANCE, 0], True
+                        else:
+                            return [ego_state[0], pedestrian_y + BRAKE_DISTANCE, 0], True
             
             # Caso in cui sono in curva
             else:
                 #La curva sarà lungo l'asse delle x
                 if abs(waypoints[goal_index][0] - ego_state[0]) > abs(waypoints[goal_index][1] - ego_state[1]):
+                    logging.info("CURVA VERSO X: %d, %d", waypoints[goal_index][0], waypoints[goal_index][1])
                     # Un pedone che ha intersecato uno dei nostri path ha una yaw perpendicolare (o quasi) a noi
                     if abs(np.cos(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.cos(math.pi / 6):
                         # Sto girando verso destra
@@ -409,7 +377,9 @@ class BehaviouralPlanner:
                             logging.info("Pedestrian: %d, %d", pedestrian.transform.location.x, pedestrian.transform.location.y)
                             return [pedestrian.transform.location.x + 3, waypoints[goal_index][1], 0], True
                 else:
+                    logging.info("CURVA VERSO y: %d, %d", waypoints[goal_index][0], waypoints[goal_index][1])
                     if abs(np.sin(pedestrian.transform.rotation.yaw * math.pi / 180)) < np.sin(math.pi / 6):
+                        
                         # sto girando verso il basso
                         if np.sign(waypoints[goal_index][1] - ego_state[1]) > 0: 
                             logging.info("CURVA VERSO Y POSITIVE")
