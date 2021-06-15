@@ -127,7 +127,7 @@ class CollisionChecker:
                 ith index in the collision_check_array list corresponds to the
                 ith path in the paths list.
         """
-        pedestrians_in_collision = {}
+        pedestrians_in_collision = set()
         for i in range(len(paths)):
             path           = paths[i]
 
@@ -163,10 +163,10 @@ class CollisionChecker:
                 # if any of the obstacle points lies within any of our circles.
                 # If so, then the path will collide with an obstacle and
                 # the collision_free flag should be set to false for this flag
-                for k in pedestrians.keys():
+                for k in range(len(pedestrians)):
                     collision_free = True
                     collision_dists = \
-                        scipy.spatial.distance.cdist(pedestrians[k], 
+                        scipy.spatial.distance.cdist(pedestrians[k][1], 
                                                      circle_locations)
                     collision_dists = np.subtract(collision_dists, 
                                                   self._circle_radii)
@@ -174,12 +174,10 @@ class CollisionChecker:
                                      not np.any(collision_dists < 0)
 
                     if not collision_free:
-                        if k in pedestrians_in_collision.keys():
-                            pedestrians_in_collision[k].append(i)
-                        else:
-                            pedestrians_in_collision[k] = [i]
+                        pedestrians_in_collision.add(k)
         
-        for pedestrian in pedestrians_in_collision.keys():
+        for index in pedestrians_in_collision:
+            pedestrian = pedestrians[index][0]
             pedestrian_yaw = pedestrian.transform.rotation.yaw * pi / 180
             pedestrian_x = pedestrian.transform.location.x
             pedestrian_y = pedestrian.transform.location.y

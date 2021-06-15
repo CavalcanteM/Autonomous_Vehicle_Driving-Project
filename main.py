@@ -51,7 +51,7 @@ PLAYER_START_INDEX = 16         #  spawn index for player 13 default
 DESTINATION_INDEX = 93      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 300      # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 5      # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
@@ -943,12 +943,12 @@ def exec_waypoint_nav_demo(args):
                 obstacles_box_pts.append(current_box_pts)
 
             # Transform pedestrians to world
-            pedestrians = {}
+            pedestrians = []
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
                 #if abs(round(np.cos(current.transform.rotation.yaw * pi / 180), 1)) != abs(round(np.cos(current_yaw),1)):
                 current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                pedestrians[current] = current_box_pts
+                pedestrians.append([current, current_box_pts])
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
