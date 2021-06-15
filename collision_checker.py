@@ -2,6 +2,13 @@
 import numpy as np
 import scipy.spatial
 from math import sin, cos, pi, sqrt
+from behavioural_planner import pointOnSegment
+
+
+HALF_LANE_WIDTH = 2
+BRAKE_DISTANCE = 3
+DIRECTION_SCORE = 0.95
+PEDESTRIAN_FENCE_LEN = 3
 
 class CollisionChecker:
     def __init__(self, circle_offsets, circle_radii, weight):
@@ -94,7 +101,7 @@ class CollisionChecker:
 
     # Takes in a set of paths and pediastrians, and returns an array
     # of bools that says whether or not each path is collision free.
-    def pedestrian_collision_check(self, paths, pedestrians):
+    def pedestrian_collision_check(self, paths, pedestrians, best_path):
         """Returns a bool array on whether each path is collision free.
 
         args:
@@ -120,7 +127,7 @@ class CollisionChecker:
                 ith index in the collision_check_array list corresponds to the
                 ith path in the paths list.
         """
-        pedestrians_in_collision = set()
+        pedestrians_in_collision = {}
         for i in range(len(paths)):
             path           = paths[i]
 
@@ -156,7 +163,7 @@ class CollisionChecker:
                 # if any of the obstacle points lies within any of our circles.
                 # If so, then the path will collide with an obstacle and
                 # the collision_free flag should be set to false for this flag
-                for k in range(len(pedestrians)):
+                for k in pedestrians.keys():
                     collision_free = True
                     collision_dists = \
                         scipy.spatial.distance.cdist(pedestrians[k], 
@@ -167,8 +174,61 @@ class CollisionChecker:
                                      not np.any(collision_dists < 0)
 
                     if not collision_free:
-                        pedestrians_in_collision.add(k)
-        return pedestrians_in_collision
+                        if k in pedestrians_in_collision.keys():
+                            pedestrians_in_collision[k].append(i)
+                        else:
+                            pedestrians_in_collision[k] = [i]
+        
+        for pedestrian in pedestrians_in_collision.keys():
+            pedestrian_yaw = pedestrian.transform.rotation.yaw * pi / 180
+            pedestrian_x = pedestrian.transform.location.x
+            pedestrian_y = pedestrian.transform.location.y
+
+            pedestrian_final_x = pedestrian_x + PEDESTRIAN_FENCE_LEN * cos(pedestrian_yaw)
+            pedestrian_final_y = pedestrian_y + PEDESTRIAN_FENCE_LEN * sin(pedestrian_yaw)
+
+            pedestrian_x = pedestrian.transform.location.x - PEDESTRIAN_FENCE_LEN / 2 * cos(pedestrian_yaw)
+            pedestrian_y = pedestrian.transform.location.y - PEDESTRIAN_FENCE_LEN / 2 * sin(pedestrian_yaw)
+            
+            intersect_flag = False
+            for i in range(len(best_path[0])-1):
+                wp_1 = [best_path[0][i], best_path[1][i]]
+                wp_2   = [best_path[0][i+1], best_path[1][i+1]]
+                s_1    = [pedestrian_x, pedestrian_y]
+                s_2    = [pedestrian_final_x, pedestrian_final_y]
+                
+                v1     = np.subtract(wp_2, wp_1)
+                v2     = np.subtract(s_1, wp_2)
+                sign_1 = np.sign(np.cross(v1, v2))
+                v2     = np.subtract(s_2, wp_2)
+                sign_2 = np.sign(np.cross(v1, v2))
+
+                v1     = np.subtract(s_2, s_1)
+                v2     = np.subtract(wp_1, s_2)
+                sign_3 = np.sign(np.cross(v1, v2))
+                v2     = np.subtract(wp_2, s_2)
+                sign_4 = np.sign(np.cross(v1, v2))
+
+                # Check if the line segments intersect.
+                if (sign_1 != sign_2) and (sign_3 != sign_4):
+                    intersect_flag = True
+
+                # Check if the collinearity cases hold.
+                if (sign_1 == 0) and pointOnSegment(wp_1, s_1, wp_2):
+                    intersect_flag = True
+                if (sign_2 == 0) and pointOnSegment(wp_1, s_2, wp_2):
+                    intersect_flag = True
+                if (sign_3 == 0) and pointOnSegment(s_1, wp_1, s_2):
+                    intersect_flag = True
+                if (sign_3 == 0) and pointOnSegment(s_1, wp_2, s_2):
+                    intersect_flag = True
+                
+                if intersect_flag:
+                    if i >= 5:
+                        return [best_path[0][i-5], best_path[1][i-5], 0], True
+                    else:
+                        return [best_path[0][0], best_path[1][0], 0], True
+        return [], False
 
             
 

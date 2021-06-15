@@ -47,11 +47,11 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 52         #  spawn index for player 13 default
-DESTINATION_INDEX = 134      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 16         #  spawn index for player 13 default
+DESTINATION_INDEX = 93      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 150      # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 300      # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
@@ -943,12 +943,12 @@ def exec_waypoint_nav_demo(args):
                 obstacles_box_pts.append(current_box_pts)
 
             # Transform pedestrians to world
-            pedestrian_box_pts = []
+            pedestrians = {}
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
                 #if abs(round(np.cos(current.transform.rotation.yaw * pi / 180), 1)) != abs(round(np.cos(current_yaw),1)):
                 current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
-                pedestrian_box_pts.append(current_box_pts)
+                pedestrians[current] = current_box_pts
             # EndEditGroup2
 
             # Execute the behaviour and local planning in the current instance
@@ -1003,13 +1003,7 @@ def exec_waypoint_nav_demo(args):
                     best_path = paths[best_index]
                     lp._prev_best_path = best_path
                 
-                pedestrians_in_collision = lp._collision_checker.pedestrian_collision_check(paths, pedestrian_box_pts)
-
-                if len(pedestrians_in_collision) > 0:
-                    bp._obstacle_on_lane = True
-                    bp._pedestrians = [pedestrian_pos[x] for x in pedestrians_in_collision]
-                else:
-                    bp._obstacle_on_lane = False
+                bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, best_path)
                 # EndEditGroup2
 
                 if best_path is not None:
