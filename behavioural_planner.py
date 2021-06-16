@@ -154,8 +154,8 @@ class BehaviouralPlanner:
         elif self._state == DECELERATE_TO_STOP:
             closest_len, closest_index = get_closest_index(waypoints, ego_state)
 
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-            while waypoints[goal_index][2] <= 0.1: goal_index += 1
+            # goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+            # while waypoints[goal_index][2] <= 0.1: goal_index += 1
 
             if self._obstacle_on_lane:
                 self._goal_state = self.min_distance(ego_state, self._goal_state, self._goal_pedestrian)
@@ -176,16 +176,13 @@ class BehaviouralPlanner:
             # passed the traffic light, return to lane following.
             # You should use the get_closest_index(), get_goal_index(), and 
             # check_for_stop_signs() helper functions.
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
-
-            goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
-            while waypoints[goal_index][2] <= 0.1: goal_index += 1
-                
             if not self._obstacle_on_lane and self._is_traffic_light_green: 
                 # We've stopped for the required amount of time, so the new goal 
                 # index for the stop line is not relevant. Use the goal index
                 # that is the lookahead distance away. 
-                                
+                closest_len, closest_index = get_closest_index(waypoints, ego_state)
+                goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
+                while waypoints[goal_index][2] <= 0.1: goal_index += 1               
                 self._goal_index = goal_index
                 self._goal_state = waypoints[goal_index]
 
