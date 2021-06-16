@@ -222,10 +222,10 @@ class CollisionChecker:
                     intersect_flag = True
                 
                 if intersect_flag:
-                    if i >= 5:
-                        return [best_path[0][i-5], best_path[1][i-5], 0], True
-                    else:
-                        return [best_path[0][0], best_path[1][0], 0], True
+                    for j in range(i).reverse():
+                        if ((((best_path[0][i] - best_path[0][j] )**2) + ((best_path[1][i] - best_path[1][j] )**2) )**0.5) >= BRAKE_DISTANCE: 
+                            return [best_path[0][j], best_path[1][j], 0], True
+                    return [best_path[0][0], best_path[1][0], 0], True
         return [], False
 
             
