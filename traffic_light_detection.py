@@ -160,14 +160,12 @@ class TrafficLightDetection:
             self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
-            self.prev_semaphore_box = None
             return True, boxes, is_green
 
         elif self._count_missdetection >= NUM_SEMAPHORE_CHECKS:
             self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
-            self.prev_semaphore_box = None
             return False, boxes, True
 
         return False, boxes, False
