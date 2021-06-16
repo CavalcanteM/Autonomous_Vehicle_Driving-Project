@@ -13,7 +13,7 @@ from yolo import YOLO
 
 # EditGroup2
 # Constants
-NUM_SEMAPHORE_CHECKS = 13
+NUM_SEMAPHORE_CHECKS = 15
 SCORE_THRESHOLD = 0.20
 # EndEditGroup2
 
@@ -56,17 +56,13 @@ def to_rot(r):
 
 class TrafficLightDetection:
     def __init__(self, camera_parameters, config):
-        # Constants
-        self.NUM_SEMAPHORE_CHECKS = 13
-        self.SCORE_THRESHOLD = 0.20
-        
         #Detector
         self.traffic_light_detector = YOLO(config)
 
         # Detection parameters
         self.prev_semaphore_box = None
-        self.count_semaphore_detections = 0
-        self.count_missdetection = 0
+        # self._count_semaphore_detections = 0
+        self._count_missdetection = 0
         self._num_go = 0
         self._num_stop = 0
         self.th = int(0.10 * camera_parameters["width"])
@@ -110,15 +106,15 @@ class TrafficLightDetection:
 
             #if current_box.get_score() > self.SCORE_THRESHOLD:
             if current_box.get_score() > SCORE_THRESHOLD:
-                self.count_missdetection = 0
+                # self._count_missdetection = 0
                 # First time semaphore is detected
                 if self.prev_semaphore_box == None:
                     self.prev_semaphore_box = current_box
-                    self.count_semaphore_detections = 1
+                    # self._count_semaphore_detections = 1
                     if current_box.get_label() == 0:
                         self._num_go = 1
                     else:
-                        self._num_stop =1
+                        self._num_stop = 1
                 else:
                     # Check if the boxes refer to the same object
                     xmin_diff = abs(self.camera_width * current_box.xmin - self.camera_width * self.prev_semaphore_box.xmin)
@@ -128,42 +124,52 @@ class TrafficLightDetection:
 
                     if xmin_diff < self.th and xmax_diff < self.th and ymin_diff < self.th and ymax_diff < self.th:
                         # the two boxes refer to the same object
-                        self.count_semaphore_detections += 1
+                        # self._count_semaphore_detections += 1
                         if current_box.get_label() == 0:
                             self._num_go += 1
                         else:
-                            self._num_stop +=1
+                            self._num_stop += 1
                         self.prev_semaphore_box = current_box
                     else:
-
-                        logging.debug("Threshold violata")
-                        self.prev_semaphore_box = None
-                        self.count_semaphore_detections = 0
-                        self._num_go = 0
-                        self._num_stop = 0
+                        # logging.debug("Threshold violata")
+                        self._count_missdetection += 1
+                        self.prev_semaphore_box = current_box
+                        # self.prev_semaphore_box = None
+                        # self._count_semaphore_detections = 0
+                        # self._num_go = 0
+                        # self._num_stop = 0
             else:
-                self.count_missdetection += 1
+                self._count_missdetection += 1
         elif self.prev_semaphore_box is not None:
-            self.count_missdetection += 1
+            self._count_missdetection += 1
 
-        # if self.count_missdetection == int(0.3*self.NUM_SEMAPHORE_CHECKS):
-        if self.count_missdetection == int(0.3*NUM_SEMAPHORE_CHECKS):            
-                logging.debug("Missdetection")
-                self.prev_semaphore_box = None
-                self.count_semaphore_detections = 0      
-                self.count_missdetection = 0
-                self._num_go = 0
-                self._num_stop = 0
-                return False, boxes, True
+        # if self._count_missdetection == int(0.3*NUM_SEMAPHORE_CHECKS):            
+        #         logging.debug("Missdetection")
+        #         self.prev_semaphore_box = None
+        #         self._count_semaphore_detections = 0      
+        #         self._count_missdetection = 0
+        #         self._num_go = 0
+        #         self._num_stop = 0
+        #         return False, boxes, True
 
-        #if self.count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
-        if self.count_semaphore_detections == NUM_SEMAPHORE_CHECKS or self._num_go >= int(NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(NUM_SEMAPHORE_CHECKS/2)+1:
+        # logging.info("MISSDETECTION: %d", self._count_missdetection)
+
+        #if self._count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
+        if self._num_go >= NUM_SEMAPHORE_CHECKS or self._num_stop >= NUM_SEMAPHORE_CHECKS:
             is_green = self._num_go > self._num_stop
-            self.count_semaphore_detections = 0
-            self.count_missdetection = 0
+            self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
+            self.prev_semaphore_box = None
             return True, boxes, is_green
+
+        elif self._count_missdetection >= NUM_SEMAPHORE_CHECKS:
+            self._count_missdetection = 0
+            self._num_go = 0
+            self._num_stop = 0
+            self.prev_semaphore_box = None
+            return False, boxes, True
+
         return False, boxes, False
            
 
