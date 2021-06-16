@@ -190,7 +190,7 @@ class CollisionChecker:
             
             intersect_flag = False
             for i in range(len(best_path[0])-1):
-                wp_1 = [best_path[0][i], best_path[1][i]]
+                wp_1   = [best_path[0][i], best_path[1][i]]
                 wp_2   = [best_path[0][i+1], best_path[1][i+1]]
                 s_1    = [pedestrian_x, pedestrian_y]
                 s_2    = [pedestrian_final_x, pedestrian_final_y]

@@ -47,11 +47,11 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 16         #  spawn index for player 13 default
-DESTINATION_INDEX = 93      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 8         #  spawn index for player 13 default
+DESTINATION_INDEX = 138      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 5      # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 250      # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
@@ -1003,7 +1003,19 @@ def exec_waypoint_nav_demo(args):
                     best_path = paths[best_index]
                     lp._prev_best_path = best_path
                 
-                bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, best_path)
+                if not bp._obstacle_on_lane:
+                    path_with_obstacle = [[ego_state[0]]+best_path[0], [ego_state[1]] + best_path[1]]
+                    bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)                        
+                else:
+                    if abs(cos(current_yaw)) >= np.cos(np.radians(45)): #ci stiamo muovendo lungo x
+                        index = 0
+                    else: #ci stiamo muovendo lungo y
+                        index = 1
+                    for i in range(len(path_with_obstacle[0])-1):
+                        if (path_with_obstacle[index][i] <= ego_state[index] and ego_state[index] < path_with_obstacle[index][i+1]) or (path_with_obstacle[index][i+1] < ego_state[index] and ego_state[index] <= path_with_obstacle[index][i]):
+                            path_with_obstacle = [[ego_state[0]]+path_with_obstacle[0][i+1:], [ego_state[1]] + path_with_obstacle[1][i+1:]]
+                            bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)
+                            break   
                 # EndEditGroup2
 
                 if best_path is not None:
