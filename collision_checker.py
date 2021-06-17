@@ -8,7 +8,7 @@ from behavioural_planner import pointOnSegment
 HALF_LANE_WIDTH = 2
 BRAKE_DISTANCE = 3
 DIRECTION_SCORE = 0.95
-PEDESTRIAN_FENCE_LEN = 5
+PEDESTRIAN_FENCE_LEN = 6
 
 class CollisionChecker:
     def __init__(self, circle_offsets, circle_radii, weight):
