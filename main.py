@@ -1244,7 +1244,7 @@ def main():
 
     # Logging startup info
     log_level = logging.DEBUG if args.debug else logging.INFO
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=log_level)
+    logging.basicConfig(format='%(asctime)s - %(levelname)s: %(message)s', level=log_level)
     logging.info('listening to server %s:%s', args.host, args.port)
 
     args.out_filename_format = '_out/episode_{:0>4d}/{:s}/{:0>6d}'
