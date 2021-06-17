@@ -10,8 +10,6 @@ STAY_STOPPED = 2
 OBSTACLE_AVOIDANCE = 3
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
-# Number of cycles before moving from stop sign.
-# STOP_COUNTS = 10
 # EditGroup2
 # Costanti per gestione pedoni
 HALF_LANE_WIDTH = 2

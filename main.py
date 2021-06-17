@@ -237,18 +237,27 @@ def make_carla_settings(args):
 
     # Declare here your sensors
     # EditGroup2
-    camera0 = Camera("CameraRGB")
-    camera0.set_image_size(camera_width, camera_height)
-    camera0.set(FOV=camera_fov)
-    camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
 
+    # Inizializzazione camera RGB
+    camera0 = Camera("CameraRGB")
+    # Dimensioni immagine camera
+    camera0.set_image_size(camera_width, camera_height)
+    # Field of view della camera
+    camera0.set(FOV=camera_fov)
+    # Posizione della camera
+    camera0.set_position(cam_x_pos, cam_y_pos, cam_height)
+    # Aggiunta camera RGB
     settings.add_sensor(camera0)
 
+    # Inizializzazione camera di profondità
     cameraDepth = Camera("CameraDepth", PostProcessing = "Depth")
+    # Dimensioni immagine camera
     cameraDepth.set_image_size(camera_width, camera_height)
+    # Field of view camera
     cameraDepth.set(FOV=camera_fov)
+    # Posizione della camera
     cameraDepth.set_position(cam_x_pos, cam_y_pos, cam_height)
-
+    # Aggiunta camera di profondità
     settings.add_sensor(cameraDepth)
 
     # EndEditGroup2
@@ -825,6 +834,7 @@ def exec_waypoint_nav_demo(args):
         prev_collision_other       = 0
 
         # EditGroup2
+        # Integrazione del detector per semafori di Carla fornito nella traccia
         config_path = "./traffic_light_detection_module/config.json"
         with open(config_path) as config_buffer:
             config = json.loads(config_buffer.read())
@@ -842,17 +852,32 @@ def exec_waypoint_nav_demo(args):
             # EditGroup2
             image_BGRA = to_bgra_array(sensor_data["CameraRGB"])
 
+            # Detection dei semafori sull'immagine acquisita dalla camera RGB
             traffic_light_detected, boxes, is_green = traffic_light_detector.detect(image=image_BGRA)
 
+            # Se non viene rilevato un semaforo ci sono due casi possibili:
+            # is_green = False: non abbiamo rilevato un semaforo e non abbiamo superato il numero di missdetection
+            #                   scelto per affermare che non c'è un semaforo davanti a noi
+            # is_green = True: non abbiamo rilevato un semaforo ma abbiamo raggiunto il numero di missdetection
+            #                  scelto per affermare che non c'è un semaforo davanti a noi
             if not traffic_light_detected:
                 traffic_light_fences = []
                 if is_green:
                     bp._traffic_light_fences.clear()
                     bp.set_is_traffic_light_green(True)
+            # Se viene rilevato un semaforo verde, allora possiamo passare
+            # Viene resettato il vettore delle fence per impedire di fermarci quando non dobbiamo
+            # e il behavioral planner riceve l'informazione che abbiamo visto un semaforo verde
             elif is_green: #go
                 traffic_light_fences = []
                 bp._traffic_light_fences.clear()
                 bp.set_is_traffic_light_green(True)
+            # In questo caso abbiamo rilevato un semaforo rosso, quindi dobbiamo
+            # calcolare la fence che utilizzeremo per fermarci al semaforo
+            # Per fare ciò utilizziamo i dati forniti dalla camera di profondità
+            # Dopodichè aggiorniamo le informazioni del behavioral planner,
+            # in particolare le fence dei semafori e l'informazione che abbiamo individuato un
+            # semaforo rosso
             else:
                 depth_data = sensor_data['CameraDepth']
                 depth_data = depth_to_array(depth_data)
@@ -861,6 +886,8 @@ def exec_waypoint_nav_demo(args):
                 bp.set_is_traffic_light_green(False)
                 bp.add_traffic_light_fences(traffic_light_fences)
             
+            # Le immagini della camera RGB e della camera di profondità vengono mostrate solo
+            # se è attivo il live plotter
             if enable_live_plot:
                 image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
                 #image_BGRA = cv2.resize(image_BGRA, (200, 200))
@@ -905,7 +932,19 @@ def exec_waypoint_nav_demo(args):
 
             # EditGroup2
             # Obtain Lead Vehicle and Obstacles information.
-            # TODO: Si potrebbe creare un problema al semaforo (risolvere dopo)
+            # Iteriamo su tutti gli agenti del mondo utilizzando i dati
+            # letti dal mondo. Distinguiamo due possibili non player agents
+            # che ci interessano:
+            # - le auto, che si dividono in possibili lead vehicle e auto ferme,
+            #   che possiamo incontrare come ostacoli sul nostro percorso
+            # - i pedoni
+            # Per quanto riguarda le auto, per discriminare i possibili lead vehicle dalle
+            # auto ferme utilizziamo la velocità. Se la velocità è maggiore di 0 allora il veicolo
+            # in questione è un possibile lead vehicle, altrimenti è un ostacolo. Tuttavia, dato che il controllo
+            # viene fatto ad ogni ciclo, per evitare che le automobili che al ciclo precedente si sono fermate
+            # ad un semaforo siano considerate come ostacoli, salviamo i lead vehicle al ciclo
+            # precendente. In questo modo, se al ciclo attuale un veicolo è fermo, se prima era un lead vehicle
+            # continuerà ad essere considerato un lead vehicle.
             lead_car_pos    = []
             lead_car_length = []
             lead_car_speed  = []
@@ -913,9 +952,9 @@ def exec_waypoint_nav_demo(args):
             obstacle_car_pos = []
             pedestrian_pos  = []
             for agent in measurement_data.non_player_agents:
-                if agent.HasField('vehicle'):
-                    if agent.id not in prev_lead:
-                        if agent.vehicle.forward_speed > 0: # Possible lead vehicle
+                if agent.HasField('vehicle'):       # L'agente in questione è un veicolo
+                    if agent.id not in prev_lead:   # Il veicolo non era un lead vehicle al ciclo precedente
+                        if agent.vehicle.forward_speed > 0: # Possibile lead vehicle
                             lead_car_pos.append(
                                     [agent.vehicle.transform.location.x,
                                     agent.vehicle.transform.location.y])
@@ -924,9 +963,9 @@ def exec_waypoint_nav_demo(args):
                             lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
 
                             prev_lead.add(agent.id)
-                        else: # Car does not move, it's an obstacle
+                        else:   # Il veicolo non si muove, ostacolo
                             obstacle_car_pos.append(agent.vehicle)
-                    else:
+                    else:   # Il veicolo era un lead vehicle al ciclo precedente
                         lead_car_pos.append(
                                 [agent.vehicle.transform.location.x,
                                 agent.vehicle.transform.location.y])
@@ -948,7 +987,6 @@ def exec_waypoint_nav_demo(args):
             pedestrians = []
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
-                #if abs(round(np.cos(current.transform.rotation.yaw * pi / 180), 1)) != abs(round(np.cos(current_yaw),1)):
                 current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
                 pedestrians.append([current, current_box_pts])
             # EndEditGroup2
@@ -985,11 +1023,13 @@ def exec_waypoint_nav_demo(args):
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
+                # EditGroup2
                 if bp._obstacle_on_lane:
                     goal_for_pedestrian = [path_with_obstacle[0][-1], path_with_obstacle[1][-1], goal_velocity]
                     goal_set_for_pedestrian = lp.get_goal_state_set(bp._goal_index, goal_for_pedestrian, waypoints, ego_state)
                     paths_for_pedestrian, _ = lp.plan_paths(goal_set_for_pedestrian)
                     paths_for_pedestrian = local_planner.transform_paths(paths_for_pedestrian, ego_state)
+                # EndEditGroup2
 
                 # Calculate planned paths in the local frame.
                 paths, path_validity = lp.plan_paths(goal_state_set)
