@@ -152,7 +152,7 @@ class BehaviouralPlanner:
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
         # state.
         elif self._state == DECELERATE_TO_STOP:
-            closest_len, closest_index = get_closest_index(waypoints, ego_state)
+            # closest_len, closest_index = get_closest_index(waypoints, ego_state)
 
             # goal_index = self.get_goal_index(waypoints, ego_state, closest_len, closest_index)
             # while waypoints[goal_index][2] <= 0.1: goal_index += 1

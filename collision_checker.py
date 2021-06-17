@@ -8,7 +8,7 @@ from behavioural_planner import pointOnSegment
 HALF_LANE_WIDTH = 2
 BRAKE_DISTANCE = 3
 DIRECTION_SCORE = 0.95
-PEDESTRIAN_FENCE_LEN = 3
+PEDESTRIAN_FENCE_LEN = 5
 
 class CollisionChecker:
     def __init__(self, circle_offsets, circle_radii, weight):
@@ -222,7 +222,7 @@ class CollisionChecker:
                     intersect_flag = True
                 
                 if intersect_flag:
-                    for j in range(i).reverse():
+                    for j in reversed(range(0, i+1)):
                         if ((((best_path[0][i] - best_path[0][j] )**2) + ((best_path[1][i] - best_path[1][j] )**2) )**0.5) >= BRAKE_DISTANCE: 
                             return [best_path[0][j], best_path[1][j], 0], True
                     return [best_path[0][0], best_path[1][0], 0], True

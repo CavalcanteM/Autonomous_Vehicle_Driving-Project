@@ -47,8 +47,8 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 8         #  spawn index for player 13 default
-DESTINATION_INDEX = 138      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 90         #  spawn index for player 13 default
+DESTINATION_INDEX = 23      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 250      # total number of pedestrians to spawn
@@ -832,6 +832,8 @@ def exec_waypoint_nav_demo(args):
         # EndEditGroup2
         # EditGroup2
         prev_lead = set()
+        path_with_obstacle = []
+        goal_velocity = 0
         # EndEditGroup2
         for frame in range(TOTAL_EPISODE_FRAMES):
             # Gather current data from the CARLA server
@@ -983,6 +985,12 @@ def exec_waypoint_nav_demo(args):
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
+                if bp._obstacle_on_lane:
+                    goal_for_pedestrian = [path_with_obstacle[0][-1], path_with_obstacle[1][-1], goal_velocity]
+                    goal_set_for_pedestrian = lp.get_goal_state_set(bp._goal_index, goal_for_pedestrian, waypoints, ego_state)
+                    paths_for_pedestrian, _ = lp.plan_paths(goal_set_for_pedestrian)
+                    paths_for_pedestrian = local_planner.transform_paths(paths_for_pedestrian, ego_state)
+
                 # Calculate planned paths in the local frame.
                 paths, path_validity = lp.plan_paths(goal_state_set)
 
@@ -1005,6 +1013,7 @@ def exec_waypoint_nav_demo(args):
                 
                 if not bp._obstacle_on_lane:
                     path_with_obstacle = [[ego_state[0]]+best_path[0], [ego_state[1]] + best_path[1]]
+                    goal_velocity = best_path[2][-1]
                     bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)                        
                 else:
                     if abs(cos(current_yaw)) >= np.cos(np.radians(45)): #ci stiamo muovendo lungo x
@@ -1014,7 +1023,7 @@ def exec_waypoint_nav_demo(args):
                     for i in range(len(path_with_obstacle[0])-1):
                         if (path_with_obstacle[index][i] <= ego_state[index] and ego_state[index] < path_with_obstacle[index][i+1]) or (path_with_obstacle[index][i+1] < ego_state[index] and ego_state[index] <= path_with_obstacle[index][i]):
                             path_with_obstacle = [[ego_state[0]]+path_with_obstacle[0][i+1:], [ego_state[1]] + path_with_obstacle[1][i+1:]]
-                            bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)
+                            bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths_for_pedestrian, pedestrians, path_with_obstacle)
                             break   
                 # EndEditGroup2
 
