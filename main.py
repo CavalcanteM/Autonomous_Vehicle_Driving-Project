@@ -47,8 +47,8 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 90         #  spawn index for player 13 default
-DESTINATION_INDEX = 23      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 8         #  spawn index for player 13 default
+DESTINATION_INDEX = 138      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
 NUM_PEDESTRIANS        = 250      # total number of pedestrians to spawn
@@ -951,6 +951,8 @@ def exec_waypoint_nav_demo(args):
             lead_car_yaw    = []
             obstacle_car_pos = []
             pedestrian_pos  = []
+            fence_length = 6
+
             for agent in measurement_data.non_player_agents:
                 if agent.HasField('vehicle'):       # L'agente in questione è un veicolo
                     if agent.id not in prev_lead:   # Il veicolo non era un lead vehicle al ciclo precedente
@@ -974,7 +976,14 @@ def exec_waypoint_nav_demo(args):
                         lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
                 # Obtain the informations about a pedestrian
                 if agent.HasField('pedestrian'):
-                    pedestrian_pos.append(agent.pedestrian)
+                    pedestrian_x = agent.pedestrian.transform.location.x
+                    pedestrian_y = agent.pedestrian.transform.location.y
+                    v = np.array([pedestrian_x - current_x, pedestrian_y - current_y])
+                    l2 = np.linalg.norm(v, 2)
+                    if l2 < bp._lookahead + fence_length:
+                        pedestrian_pos.append(agent.pedestrian)
+
+            logging.info("Numero pedoni considerati: %d", len(pedestrian_pos))
 
             # Transform obstacles to world
             obstacles_box_pts = []
