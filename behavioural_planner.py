@@ -10,6 +10,7 @@ STAY_STOPPED = 2
 OBSTACLE_AVOIDANCE = 3
 # Stop speed threshold
 STOP_THRESHOLD = 0.02
+DISTANCE_FROM_TRAFFIC_LIGHT = 2
 # EditGroup2
 # Costanti per gestione pedoni
 HALF_LANE_WIDTH = 2
@@ -274,14 +275,14 @@ class BehaviouralPlanner:
                     goal_index = i
                     current_yaw = ego_state[2]
                     if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
-                        return [traffic_light_fence[0] - 1, ego_state[1], 0], True
+                        return [traffic_light_fence[0] - DISTANCE_FROM_TRAFFIC_LIGHT, ego_state[1], 0], True
                     elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
-                        return [traffic_light_fence[0] + 1, ego_state[1], 0], True
+                        return [traffic_light_fence[0] + DISTANCE_FROM_TRAFFIC_LIGHT, ego_state[1], 0], True
                     else:
                         if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
-                            return [ego_state[0], traffic_light_fence[1] - 1, 0], True
+                            return [ego_state[0], traffic_light_fence[1] - DISTANCE_FROM_TRAFFIC_LIGHT, 0], True
                         else:
-                            return [ego_state[0], traffic_light_fence[1] + 1, 0], True
+                            return [ego_state[0], traffic_light_fence[1] + DISTANCE_FROM_TRAFFIC_LIGHT, 0], True
 
         return goal_index, False
     # EndEditGroup2
