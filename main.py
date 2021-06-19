@@ -47,12 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 4         #  spawn index for player 13 default
-DESTINATION_INDEX = 138      # Setting a Destination HERE 91 default
+PLAYER_START_INDEX = 10         #  spawn index for player 13 default
+DESTINATION_INDEX = 136      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 200      # total number of pedestrians to spawn
-NUM_VEHICLES           = 0      # total number of vehicles to spawn
+NUM_PEDESTRIANS        = 100      # total number of pedestrians to spawn
+NUM_VEHICLES           = 100      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
 ###############################################################################àà
@@ -113,6 +113,9 @@ LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the
                                           # (which operates at the simulation
                                           # frequency). Must be a natural
                                           # number.
+# EditGroup2
+LEAD_VEHICLE_LOOKAHEAD_BASE = 5.0 # m
+# EndEditGroup2
 
 # Path interpolation parameters
 INTERP_MAX_POINTS_PLOT    = 10   # number of points used for displaying
@@ -128,8 +131,8 @@ camera_parameters = {}
 camera_parameters['x'] = 1.8
 camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
-camera_parameters['width'] = 800
-camera_parameters['height'] = 800
+camera_parameters['width'] = 416
+camera_parameters['height'] = 416
 camera_parameters['fov'] = 90
 
 def rotate_x(angle):
@@ -1027,6 +1030,7 @@ def exec_waypoint_nav_demo(args):
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
                     logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
+                    bp._follow_lead_vehicle_lookahead = LEAD_VEHICLE_LOOKAHEAD_BASE + (current_speed * 3.6 /10)**2
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
