@@ -1072,8 +1072,8 @@ def exec_waypoint_nav_demo(args):
                     for i in range(len(path_with_obstacle[0])-1):
                         if (path_with_obstacle[index][i] <= ego_state[index] and ego_state[index] < path_with_obstacle[index][i+1]) or (path_with_obstacle[index][i+1] < ego_state[index] and ego_state[index] <= path_with_obstacle[index][i]):
                             path_with_obstacle = [[ego_state[0]]+path_with_obstacle[0][i+1:], [ego_state[1]] + path_with_obstacle[1][i+1:]]
-                            bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths_for_pedestrian, pedestrians, path_with_obstacle)
-                            break   
+                            break
+                    bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths_for_pedestrian, pedestrians, path_with_obstacle)                            
                 # EndEditGroup2
 
                 if best_path is not None:
