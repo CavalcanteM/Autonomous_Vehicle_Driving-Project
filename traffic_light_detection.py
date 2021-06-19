@@ -65,6 +65,7 @@ class TrafficLightDetection:
         self._count_missdetection = 0
         self._num_go = 0
         self._num_stop = 0
+        self._missdetection_repetition = 0
         self.th = int(0.10 * camera_parameters["width"])
 
         # Camera parameters
@@ -157,6 +158,7 @@ class TrafficLightDetection:
         #if self._count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
         if self._num_go >= NUM_SEMAPHORE_CHECKS or self._num_stop >= NUM_SEMAPHORE_CHECKS:
             is_green = self._num_go > self._num_stop
+            self._missdetection_repetition = 0
             self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
@@ -166,7 +168,12 @@ class TrafficLightDetection:
             self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
-            return False, boxes, True
+
+            if self._missdetection_repetition == 3:
+                self._missdetection_repetition = 0
+                return False, boxes, True
+            else:
+                self._missdetection_repetition += 1
 
         return False, boxes, False
            
