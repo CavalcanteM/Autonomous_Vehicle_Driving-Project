@@ -13,7 +13,7 @@ from yolo import YOLO
 
 # EditGroup2
 # Constants
-NUM_SEMAPHORE_CHECKS = 15
+NUM_SEMAPHORE_CHECKS = 21
 SCORE_THRESHOLD = 0.20
 # EndEditGroup2
 

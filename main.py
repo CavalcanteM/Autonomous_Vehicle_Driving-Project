@@ -47,11 +47,11 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 8         #  spawn index for player 13 default
+PLAYER_START_INDEX = 4         #  spawn index for player 13 default
 DESTINATION_INDEX = 138      # Setting a Destination HERE 91 default
 # PLAYER_START_INDEX = 145          #  spawn index for player
 # DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 250      # total number of pedestrians to spawn
+NUM_PEDESTRIANS        = 200      # total number of pedestrians to spawn
 NUM_VEHICLES           = 0      # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
 SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
@@ -128,8 +128,8 @@ camera_parameters = {}
 camera_parameters['x'] = 1.8
 camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
-camera_parameters['width'] = 416
-camera_parameters['height'] = 416
+camera_parameters['width'] = 800
+camera_parameters['height'] = 800
 camera_parameters['fov'] = 90
 
 def rotate_x(angle):
@@ -981,9 +981,9 @@ def exec_waypoint_nav_demo(args):
                     v = np.array([pedestrian_x - current_x, pedestrian_y - current_y])
                     l2 = np.linalg.norm(v, 2)
                     if l2 < bp._lookahead + fence_length:
-                        pedestrian_pos.append(agent.pedestrian)
-
-            logging.info("Numero pedoni considerati: %d", len(pedestrian_pos))
+                        if agent.pedestrian.forward_speed > 0.02 or ((abs(cos(current_yaw)) > 0.95 and not (pedestrian_x < current_x + 2 or pedestrian_x > current_x - 2)) \
+                            or (abs(sin(current_yaw)) > 0.95 and not (pedestrian_y < current_y + 2 or pedestrian_y > current_y - 2))):
+                            pedestrian_pos.append(agent.pedestrian)
 
             # Transform obstacles to world
             obstacles_box_pts = []
