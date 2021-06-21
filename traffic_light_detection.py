@@ -5,7 +5,7 @@ from math import cos, sin, pi,tan
 from cutils import CUtils
 import logging
 
-#   Required to import carla library
+# Required to import carla library
 import os
 import sys
 sys.path.append(os.path.abspath(sys.path[0] + '/traffic_light_detection_module'))
@@ -60,8 +60,7 @@ class TrafficLightDetection:
         self.traffic_light_detector = YOLO(config)
 
         # Detection parameters
-        self.prev_semaphore_box = None
-        # self._count_semaphore_detections = 0
+        self._prev_semaphore_box = None
         self._count_missdetection = 0
         self._num_go = 0
         self._num_stop = 0
@@ -99,63 +98,46 @@ class TrafficLightDetection:
         # Lambda Function for transformation of image frame in camera frame 
         self.image_to_camera_frame = lambda object_camera_frame: np.dot(image_camera_frame, object_camera_frame)
 
-    
+    # Effettua la detection dei semafori sull'immagine in input
     def detect(self, image):
         boxes = self.traffic_light_detector.predict(image)
         if len(boxes) > 0:
             current_box = boxes[0]
 
-            #if current_box.get_score() > self.SCORE_THRESHOLD:
             if current_box.get_score() > SCORE_THRESHOLD:
-                # self._count_missdetection = 0
-                # First time semaphore is detected
-                if self.prev_semaphore_box == None:
-                    self.prev_semaphore_box = current_box
-                    # self._count_semaphore_detections = 1
+                # Il semaforo viene rilevato per la prima volta
+                if self._prev_semaphore_box == None:
+                    self._prev_semaphore_box = current_box
                     if current_box.get_label() == 0:
                         self._num_go = 1
                     else:
                         self._num_stop = 1
+                # Abbiamo già individuato un semaforo ai frame precedenti
                 else:
-                    # Check if the boxes refer to the same object
-                    xmin_diff = abs(self.camera_width * current_box.xmin - self.camera_width * self.prev_semaphore_box.xmin)
-                    xmax_diff = abs(self.camera_width * current_box.xmax - self.camera_width * self.prev_semaphore_box.xmax)
-                    ymin_diff = abs(self.camera_width * current_box.ymin - self.camera_width * self.prev_semaphore_box.ymin)
-                    ymax_diff = abs(self.camera_width * current_box.ymax - self.camera_width * self.prev_semaphore_box.ymax)
+                    # Controlliamo se la bounding box trovata si riferisce allo stesso semaforo rilevato in precedenza
+                    xmin_diff = abs(self.camera_width * current_box.xmin - self.camera_width * self._prev_semaphore_box.xmin)
+                    xmax_diff = abs(self.camera_width * current_box.xmax - self.camera_width * self._prev_semaphore_box.xmax)
+                    ymin_diff = abs(self.camera_width * current_box.ymin - self.camera_width * self._prev_semaphore_box.ymin)
+                    ymax_diff = abs(self.camera_width * current_box.ymax - self.camera_width * self._prev_semaphore_box.ymax)
 
+                    # Le due bounding box si riferiscono allo stesso oggetto
                     if xmin_diff < self.th and xmax_diff < self.th and ymin_diff < self.th and ymax_diff < self.th:
-                        # the two boxes refer to the same object
-                        # self._count_semaphore_detections += 1
                         if current_box.get_label() == 0:
                             self._num_go += 1
                         else:
                             self._num_stop += 1
-                        self.prev_semaphore_box = current_box
+                        self._prev_semaphore_box = current_box
+                    # Le due bounding box non si riferiscono allo stesso oggetto, abbiamo avuto una missdetection
                     else:
-                        # logging.debug("Threshold violata")
                         self._count_missdetection += 1
-                        self.prev_semaphore_box = current_box
-                        # self.prev_semaphore_box = None
-                        # self._count_semaphore_detections = 0
-                        # self._num_go = 0
-                        # self._num_stop = 0
+                        self._prev_semaphore_box = current_box
             else:
                 self._count_missdetection += 1
-        elif self.prev_semaphore_box is not None:
+        elif self._prev_semaphore_box is not None:
             self._count_missdetection += 1
 
-        # if self._count_missdetection == int(0.3*NUM_SEMAPHORE_CHECKS):            
-        #         logging.debug("Missdetection")
-        #         self.prev_semaphore_box = None
-        #         self._count_semaphore_detections = 0      
-        #         self._count_missdetection = 0
-        #         self._num_go = 0
-        #         self._num_stop = 0
-        #         return False, boxes, True
-
-        # logging.info("MISSDETECTION: %d", self._count_missdetection)
-
-        #if self._count_semaphore_detections == self.NUM_SEMAPHORE_CHECKS or self._num_go >= int(self.NUM_SEMAPHORE_CHECKS/2)+1 or self._num_stop >= int(self.NUM_SEMAPHORE_CHECKS/2)+1:
+        # Abbiamo rilevato un numero di frame sufficiente per affermare che abbiamo individuato un semaforo rosso o
+        # un semaforo verde
         if self._num_go >= NUM_SEMAPHORE_CHECKS or self._num_stop >= NUM_SEMAPHORE_CHECKS:
             is_green = self._num_go > self._num_stop
             self._missdetection_repetition = 0
@@ -164,11 +146,13 @@ class TrafficLightDetection:
             self._num_stop = 0
             return True, boxes, is_green
 
+        # Abbiamo rilevato un numero di frame sufficiente per affermare che non abbiamo individuato un semaforo
         elif self._count_missdetection >= NUM_SEMAPHORE_CHECKS:
             self._count_missdetection = 0
             self._num_go = 0
             self._num_stop = 0
 
+            # TODO:
             if self._missdetection_repetition == 3:
                 self._missdetection_repetition = 0
                 return False, boxes, True
@@ -180,12 +164,12 @@ class TrafficLightDetection:
 
     def get_traffic_light_fences(self, depth_data, current_x, current_y, current_yaw):
         traffic_light_fences = []     # [x0, y0, x1, y1]
-        if self.prev_semaphore_box is not None:
-            xmin = self.camera_width*self.prev_semaphore_box.xmin
-            ymin = self.camera_height*self.prev_semaphore_box.ymin
-            xmax = self.camera_width*self.prev_semaphore_box.xmax
-            ymax = self.camera_height*self.prev_semaphore_box.ymax
-            prop = self.prev_semaphore_box.xmin
+        if self._prev_semaphore_box is not None:
+            xmin = self.camera_width*self._prev_semaphore_box.xmin
+            ymin = self.camera_height*self._prev_semaphore_box.ymin
+            xmax = self.camera_width*self._prev_semaphore_box.xmax
+            ymax = self.camera_height*self._prev_semaphore_box.ymax
+            prop = self._prev_semaphore_box.xmin
             
             # 45:1=alfa:prop   -> alfa = prop*90 - 45 
 
@@ -212,17 +196,19 @@ class TrafficLightDetection:
             pixel = [x , y, 1]
             pixel = np.reshape(pixel, (3,1))
             
-            logging.debug("PROP %s", str(prop))
             # Projection Pixel to Image Frame
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
 
-            logging.debug("Depth prima %s", str(depth))
             if depth != 1000.0 and prop > 0.5:
+                # TODO:
+                # dato che il semaforo si trova alla nostra destra, le misure
+                # della depth, che sono considerate rispetto alla posizione della camera,
+                # richiedono una proiezione della depth del semaforo sull'asse centrale dell'immagine
                 alpha = prop * 90 - 45
                 alpha = alpha / 180 * pi
                 depth = depth * cos(alpha)
                 
-                logging.debug("Depth dopo %s", str(depth))
+                logging.debug("Depth: %s", str(depth))
                 image_frame_vect = np.dot(self.inv_intrinsic_matrix, pixel) * depth
                 
                 # Create extended vector
@@ -256,7 +242,7 @@ class TrafficLightDetection:
                     stopsign_data.create_var('y', vehicle_frame[0][0]-self.cam_x_pos)
                 stopsign_data.create_var('z', vehicle_frame[0][2])
 
-                # obtain stop sign fence points for LP
+                # obtain traffic light fence points for LP
                 x = stopsign_data.x
                 y = stopsign_data.y
 
@@ -266,24 +252,21 @@ class TrafficLightDetection:
                 spos_shift = np.array([
                         [x, x],
                         [y, y]])
-                before = np.array([
-                        [5*int(round(abs(cos(current_yaw)))),5*int(round(abs(cos(current_yaw))))],
-                        [5*int(round(abs(sin(current_yaw)))),5*int(round(abs(sin(current_yaw))))]])
 
-                if np.sign(round(np.cos(current_yaw))) > 0: #mi sto muovendo lungo le x positive, verso destra
+                if np.sign(round(np.cos(current_yaw))) > 0: # mi sto muovendo lungo le x positive
                     spos = np.add(spos, spos_shift)
                     
-                elif np.sign(round(np.cos(current_yaw))) < 0: #mi sto muovendo lungo le x negative, verso sinistra
+                elif np.sign(round(np.cos(current_yaw))) < 0: # mi sto muovendo lungo le x negative
                     spos = np.subtract(spos, spos_shift)
                     
                 else:
-                    if np.sign(round(np.sin(current_yaw))) > 0: #mi sto muovendo lungo le y positive, verso il basso
+                    if np.sign(round(np.sin(current_yaw))) > 0: # mi sto muovendo lungo le y positive
                         spos = np.add(spos, spos_shift)
-                    else:
+                    else:   # mi sto muovendo lungo le y negative
                         spos = np.subtract(spos, spos_shift)
 
                 traffic_light_fences.append([spos[0,0], spos[1,0], spos[0,1], spos[1,1]])
-                self.prev_semaphore_box = None
+                self._prev_semaphore_box = None
 
         logging.debug("Fence calcolata: %s", str(traffic_light_fences))
         return traffic_light_fences
