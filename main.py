@@ -47,14 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX = 10         #  spawn index for player 13 default
-DESTINATION_INDEX = 136      # Setting a Destination HERE 91 default
-# PLAYER_START_INDEX = 145          #  spawn index for player
-# DESTINATION_INDEX = 60        # Setting a Destination HERE
-NUM_PEDESTRIANS        = 100      # total number of pedestrians to spawn
-NUM_VEHICLES           = 100      # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 0      # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 0     # seed for vehicle spawn randomizer
+PLAYER_START_INDEX     = 10         # spawn index for player
+DESTINATION_INDEX      = 136        # setting a destination
+NUM_PEDESTRIANS        = 100        # total number of pedestrians to spawn
+NUM_VEHICLES           = 100        # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 0          # seed for pedestrian spawn randomizer
+SEED_VEHICLES          = 0          # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -114,7 +112,7 @@ LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the
                                           # frequency). Must be a natural
                                           # number.
 # EditGroup2
-LEAD_VEHICLE_LOOKAHEAD_BASE = 5.0 # m
+LEAD_VEHICLE_LOOKAHEAD_BASE = 10.0 # m
 # EndEditGroup2
 
 # Path interpolation parameters
@@ -131,8 +129,8 @@ camera_parameters = {}
 camera_parameters['x'] = 1.8
 camera_parameters['y'] = 0
 camera_parameters['z'] = 1.3
-camera_parameters['width'] = 416
-camera_parameters['height'] = 416
+camera_parameters['width'] = 800
+camera_parameters['height'] = 800
 camera_parameters['fov'] = 90
 
 def rotate_x(angle):
@@ -893,9 +891,11 @@ def exec_waypoint_nav_demo(args):
             # se è attivo il live plotter
             if enable_live_plot:
                 image_BGRA = postprocessing.draw_boxes(image_BGRA, boxes, config['model']['classes'])
-                #image_BGRA = cv2.resize(image_BGRA, (200, 200))
-                cv2.imshow("BGRA_IMAGE",image_BGRA)
-                cv2.imshow("DEPTH", depth_to_array(sensor_data["CameraDepth"]))
+                image_to_show = cv2.resize(image_BGRA, (416, 416))
+                cv2.imshow("BGRA_IMAGE",image_to_show)
+                image_depth = cv2.resize(depth_to_array(sensor_data["CameraDepth"]), (416, 416))
+                # cv2.imshow("DEPTH", depth_to_array(sensor_data["CameraDepth"]))
+                cv2.imshow("DEPTH", image_depth)
             # EndEditGroup2
 
             # UPDATE HERE the obstacles list
@@ -934,9 +934,8 @@ def exec_waypoint_nav_demo(args):
             collided_flag_history.append(collided_flag)
 
             # EditGroup2
-            # Obtain Lead Vehicle and Obstacles information.
             # Iteriamo su tutti gli agenti del mondo utilizzando i dati
-            # letti dal mondo. Distinguiamo due possibili non player agents
+            # letti dal server. Distinguiamo due possibili non player agents
             # che ci interessano:
             # - le auto, che si dividono in possibili lead vehicle e auto ferme,
             #   che possiamo incontrare come ostacoli sul nostro percorso
@@ -968,6 +967,7 @@ def exec_waypoint_nav_demo(args):
                             lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
 
                             prev_lead.add(agent.id)
+                        # TODO: controllare se tenere o meno
                         else:   # Il veicolo non si muove, ostacolo
                             obstacle_car_pos.append(agent.vehicle)
                     else:   # Il veicolo era un lead vehicle al ciclo precedente
@@ -977,17 +977,21 @@ def exec_waypoint_nav_demo(args):
                         lead_car_length.append(agent.vehicle.bounding_box.extent.x)
                         lead_car_speed.append(agent.vehicle.forward_speed)
                         lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
-                # Obtain the informations about a pedestrian
+                # Prelevo le informazioni dei pedoni
                 if agent.HasField('pedestrian'):
                     pedestrian_x = agent.pedestrian.transform.location.x
                     pedestrian_y = agent.pedestrian.transform.location.y
                     v = np.array([pedestrian_x - current_x, pedestrian_y - current_y])
                     l2 = np.linalg.norm(v, 2)
+                    # Effettuiamo un filtraggio dei pedoni andando a svolgere i nostri controlli
+                    # solo su quelli che si trovano nelle nostre vicinanze; in particolare se la distanza
+                    # tra il veicolo e il pedone è al di sotto di una certa threshold
                     if l2 < bp._lookahead + fence_length:
                         if agent.pedestrian.forward_speed > 0.02 or ((abs(cos(current_yaw)) > 0.95 and not (pedestrian_x < current_x + 2 or pedestrian_x > current_x - 2)) \
                             or (abs(sin(current_yaw)) > 0.95 and not (pedestrian_y < current_y + 2 or pedestrian_y > current_y - 2))):
                             pedestrian_pos.append(agent.pedestrian)
 
+            # TODO: controllare se tenere o meno
             # Transform obstacles to world
             obstacles_box_pts = []
             for index in range(len(obstacle_car_pos)):
@@ -995,7 +999,7 @@ def exec_waypoint_nav_demo(args):
                 current_box_pts = obstacle_to_world(current.transform.location, current.bounding_box.extent, current.transform.rotation)
                 obstacles_box_pts.append(current_box_pts)
 
-            # Transform pedestrians to world
+            # Trasformo la posizione del pedone in coordinate mondo
             pedestrians = []
             for index in range(len(pedestrian_pos)):
                 current = pedestrian_pos[index]
@@ -1026,17 +1030,19 @@ def exec_waypoint_nav_demo(args):
                 bp.transition_state(waypoints, ego_state, current_speed)
 
                 # EditGroup2
-                # Check to see if we need to follow the lead vehicle.
+                # Controlliamo se occorre seguire il lead vehicle
+                bp._follow_lead_vehicle_lookahead = LEAD_VEHICLE_LOOKAHEAD_BASE + (current_speed * 3.6 /10)**2
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
-                    logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))
-                    bp._follow_lead_vehicle_lookahead = LEAD_VEHICLE_LOOKAHEAD_BASE + (current_speed * 3.6 /10)**2
+                    logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))    
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
                 goal_state_set = lp.get_goal_state_set(bp._goal_index, bp._goal_state, waypoints, ego_state)
 
                 # EditGroup2
+                # Una volta trovata una intersezione con il pedone, salviamo il goal state relativo all'intersezione
+                # (l'ultimo elemento di path_with_obstacle) e calcoliamo i path locali relativi a questo goal state
                 if bp._obstacle_on_lane:
                     goal_for_pedestrian = [path_with_obstacle[0][-1], path_with_obstacle[1][-1], goal_velocity]
                     goal_set_for_pedestrian = lp.get_goal_state_set(bp._goal_index, goal_for_pedestrian, waypoints, ego_state)
@@ -1051,7 +1057,8 @@ def exec_waypoint_nav_demo(args):
                 paths = local_planner.transform_paths(paths, ego_state)
 
                 # EditGroup2
-                # Perform collision checking.
+                # TODO: check
+                # Effettuiamo il check delle collisioni tra veicolo e veicoli sempre fermi.
                 collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
                 
                 # Compute the best local path.
@@ -1064,16 +1071,21 @@ def exec_waypoint_nav_demo(args):
                     best_path = paths[best_index]
                     lp._prev_best_path = best_path
                 
+                # Se non ci sono pedoni lungo il nostro percorso al frame precedente, controlliamo se al frame corrente
+                # ci sono pedoni che intersecano il nostro best path attuale
                 if not bp._obstacle_on_lane:
                     path_with_obstacle = [[ego_state[0]]+best_path[0], [ego_state[1]] + best_path[1]]
                     goal_velocity = best_path[2][-1]
-                    bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)                        
+                    bp._goal_pedestrian, bp._obstacle_on_lane = lp._collision_checker.pedestrian_collision_check(paths, pedestrians, path_with_obstacle)
+                # Se in precedenza c'era un pedone, controlliamo se interseca ancora il best path calcolato al momento 
+                # del rilevamento della prima collisione                        
                 else:
                     if abs(cos(current_yaw)) >= np.cos(np.radians(45)): #ci stiamo muovendo lungo x
                         index = 0
                     else: #ci stiamo muovendo lungo y
                         index = 1
                     for i in range(len(path_with_obstacle[0])-1):
+                        # Andiamo a rimuovere dal best path salvato i waypoint che nel frattempo abbiamo già superato
                         if (path_with_obstacle[index][i] <= ego_state[index] and ego_state[index] < path_with_obstacle[index][i+1]) or (path_with_obstacle[index][i+1] < ego_state[index] and ego_state[index] <= path_with_obstacle[index][i]):
                             path_with_obstacle = [[ego_state[0]]+path_with_obstacle[0][i+1:], [ego_state[1]] + path_with_obstacle[1][i+1:]]
                             break
