@@ -112,10 +112,23 @@ class VelocityPlanner:
         profile = []
         # For our profile, use the open loop speed as our initial speed.
         start_speed = ego_state[3]
+        
+        # EditGroup2
         # Generate a trapezoidal profile to decelerate to stop.
-        if decelerate_to_stop:
+        # Controlliamo se nello stato di DECELERATE_TO_STOP oltre ad un lead_vehicle
+        # ci sono anche uno o più pedoni, in tal caso tramite la funzione min_distance
+        # decidiamo dove fermarci per evitare incidenti
+        if decelerate_to_stop and lead_car_state is not None and follow_lead_vehicle:
+            goal_path = [path[0][-1], path[1][-1]]
+            if min_distance(ego_state, goal_path, lead_car_state):
+                profile = self.follow_profile(path, start_speed, desired_speed, 
+                                          lead_car_state)
+            else:
+                profile = self.decelerate_profile(path, start_speed)
+        elif decelerate_to_stop:
             profile = self.decelerate_profile(path, start_speed)
-
+        # EndEditGroup2
+        
         # If we need to follow the lead vehicle, make sure we decelerate to its
         # speed by the time we reach the time gap point.
         elif lead_car_state is not None and follow_lead_vehicle:
@@ -496,3 +509,18 @@ def calc_final_speed(v_i, a, d):
     if temp < 0: return 0.0000001
     else: return sqrt(temp)
 
+# EditGroup2
+# Determina quale di due goal sia il più vicino al nostro veicolo
+# identificato dall'ego_state
+# Ritorna 0 se è più vicino il primo goal, 1 altrimenti
+def min_distance(ego_state, goal_1, goal_2):
+    dist1 = np.linalg.norm([ego_state[0] - goal_1[0], 
+                                ego_state[1] - goal_1[1]])
+    dist2 = np.linalg.norm([ego_state[0] - goal_2[0], 
+                                ego_state[1] - goal_2[1]])
+    
+    if dist1 < dist2:
+        return 0 # goal_1
+    else:
+        return 1 # goal_2
+# EndEditGroup2
