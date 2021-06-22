@@ -4,11 +4,13 @@ import scipy.spatial
 from math import sin, cos, pi, sqrt
 from behavioural_planner import pointOnSegment
 
-
+# EditGroup2
+# Costanti
 HALF_LANE_WIDTH = 2
 BRAKE_DISTANCE = 3
 DIRECTION_SCORE = 0.95
 PEDESTRIAN_FENCE_LEN = 6
+# EndEditGroup2
 
 class CollisionChecker:
     def __init__(self, circle_offsets, circle_radii, weight):
@@ -99,10 +101,9 @@ class CollisionChecker:
 
         return collision_check_array
 
-    # Takes in a set of paths and pediastrians, and returns an array
-    # of bools that says whether or not each path is collision free.
     def pedestrian_collision_check(self, paths, pedestrians, best_path):
-        """Returns a bool array on whether each path is collision free.
+        """Returns a goal state for the vehicle to reach and a boolean that
+            representes the collision with a pedestrian
 
         args:
             paths: A list of paths in the global frame.  
@@ -120,12 +121,18 @@ class CollisionChecker:
                          ...,
                          [xn, yn]]
                 , where n is the number of obstacle points and units are [m, m]
+            best_path: A list of points of the following format:
+                    [x_points, y_points, t_points]:
+                        x_points: List of x values (m)
+                        y_points: List of y values (m)
+                        t_points: List of yaw values (rad)
 
         returns:
-            collision_check_array: A list of boolean values which classifies
-                whether the path is collision-free (true), or not (false). The
-                ith index in the collision_check_array list corresponds to the
-                ith path in the paths list.
+            goal_state: Goal state for the vehicle to reach (global frame)
+                format: [x_goal, y_goal, v_goal]
+            boolean: 
+                True if there has been a collision with a pedestrian,
+                False otherwise
         """
         pedestrians_in_collision = set()
         for i in range(len(paths)):
@@ -176,15 +183,23 @@ class CollisionChecker:
                     if not collision_free:
                         pedestrians_in_collision.add(k)
         
+        # Iteriamo su tutti i pedoni che sono in collisioni con i nostri 
+        # path locali. Per ogni pedone creiamo una fence e controlliamo se
+        # tale fence interseca con il nostro best path. In tal caso possiamo
+        # dire che il pedone sta effettivamente attraversando la strada.
+        # Quindi costruiamo il goal state in modo da fermarci prima del pedone
+        # e non investirlo
         for index in pedestrians_in_collision:
             pedestrian = pedestrians[index][0]
             pedestrian_yaw = pedestrian.transform.rotation.yaw * pi / 180
             pedestrian_x = pedestrian.transform.location.x
             pedestrian_y = pedestrian.transform.location.y
 
+            # x e y finali della fence
             pedestrian_final_x = pedestrian_x + PEDESTRIAN_FENCE_LEN * cos(pedestrian_yaw)
             pedestrian_final_y = pedestrian_y + PEDESTRIAN_FENCE_LEN * sin(pedestrian_yaw)
 
+            # x e y iniziali della fence
             pedestrian_x = pedestrian.transform.location.x - PEDESTRIAN_FENCE_LEN / 2 * cos(pedestrian_yaw)
             pedestrian_y = pedestrian.transform.location.y - PEDESTRIAN_FENCE_LEN / 2 * sin(pedestrian_yaw)
             
