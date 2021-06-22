@@ -47,12 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX     = 145         # spawn index for player
-DESTINATION_INDEX      = 9        # setting a destination
-NUM_PEDESTRIANS        = 250        # total number of pedestrians to spawn
-NUM_VEHICLES           = 60        # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 5          # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 10          # seed for vehicle spawn randomizer
+PLAYER_START_INDEX     = 141         # spawn index for player
+DESTINATION_INDEX      = 56        # setting a destination
+NUM_PEDESTRIANS        = 100        # total number of pedestrians to spawn
+NUM_VEHICLES           = 100        # total number of vehicles to spawn
+SEED_PEDESTRIANS       = 7090          # seed for pedestrian spawn randomizer
+SEED_VEHICLES          = 9404          # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -113,6 +113,9 @@ LP_FREQUENCY_DIVISOR   = 2                # Frequency divisor to make the
                                           # number.
 # EditGroup2
 LEAD_VEHICLE_LOOKAHEAD_BASE = 10.0 # m
+DIRECTION_SCORE = 0.95
+SPEED_THRESHOLD = 0.02
+HALF_LANE_WIDTH = 2
 # EndEditGroup2
 
 # Path interpolation parameters
@@ -987,8 +990,8 @@ def exec_waypoint_nav_demo(args):
                     # solo su quelli che si trovano nelle nostre vicinanze; in particolare se la distanza
                     # tra il veicolo e il pedone è al di sotto di una certa threshold
                     if l2 < bp._lookahead + fence_length:
-                        if agent.pedestrian.forward_speed > 0.02 or ((abs(cos(current_yaw)) > 0.95 and not (pedestrian_x < current_x + 2 and pedestrian_x > current_x - 2)) \
-                            or (abs(sin(current_yaw)) > 0.95 and not (pedestrian_y < current_y + 2 and pedestrian_y > current_y - 2))):
+                        if agent.pedestrian.forward_speed > SPEED_THRESHOLD or ((abs(cos(current_yaw)) > DIRECTION_SCORE and not (pedestrian_x < current_x + HALF_LANE_WIDTH and pedestrian_x > current_x - HALF_LANE_WIDTH)) \
+                            or (abs(sin(current_yaw)) > DIRECTION_SCORE and not (pedestrian_y < current_y + HALF_LANE_WIDTH and pedestrian_y > current_y - HALF_LANE_WIDTH))):
                             pedestrian_pos.append(agent.pedestrian)
 
             # TODO: controllare se tenere o meno
@@ -1034,7 +1037,7 @@ def exec_waypoint_nav_demo(args):
                 bp._follow_lead_vehicle_lookahead = LEAD_VEHICLE_LOOKAHEAD_BASE + (current_speed * 3.6 /10)**2
                 lead_index = bp.check_for_lead_vehicle(ego_state, lead_car_pos, lead_car_yaw)
                 if lead_index is not None:
-                    logging.info("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))    
+                    logging.debug("Veicolo trovato %s %s", str(bp.get_follow_lead_vehicle()), str(lead_car_pos[lead_index]))    
                 # EndEditGroup2
 
                 # Compute the goal state set from the behavioural planner's computed goal state.
