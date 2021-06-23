@@ -47,12 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX     = 141         # spawn index for player
-DESTINATION_INDEX      = 56        # setting a destination
+PLAYER_START_INDEX     = 63         # spawn index for player
+DESTINATION_INDEX      = 50        # setting a destination
 NUM_PEDESTRIANS        = 100        # total number of pedestrians to spawn
 NUM_VEHICLES           = 100        # total number of vehicles to spawn
-SEED_PEDESTRIANS       = 7090          # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 9404          # seed for vehicle spawn randomizer
+SEED_PEDESTRIANS       = 2021          # seed for pedestrian spawn randomizer
+SEED_VEHICLES          = 952         # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -1101,11 +1101,13 @@ def exec_waypoint_nav_demo(args):
                     # EditGroup2
                     if lead_index is not None:
                         lead_car_state = [lead_car_pos[lead_index][0], lead_car_pos[lead_index][1], lead_car_speed[lead_index]]
+                        current_lead_car_length = lead_car_length[lead_index]
                     else:
                         lead_car_state = None
+                        current_lead_car_length = None
                     # EndEditGroup2
                     decelerate_to_stop = bp._state == behavioural_planner.DECELERATE_TO_STOP
-                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle)
+                    local_waypoints = lp._velocity_planner.compute_velocity_profile(best_path, desired_speed, ego_state, current_speed, decelerate_to_stop, lead_car_state, bp._follow_lead_vehicle, current_lead_car_length)
 
                     if local_waypoints != None:
                         # Update the controller waypoint path with the best local path.
