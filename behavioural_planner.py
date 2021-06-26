@@ -152,7 +152,7 @@ class BehaviouralPlanner:
         # stop, and compare to STOP_THRESHOLD.  If so, transition to the next
         # state.
         elif self._state == DECELERATE_TO_STOP:
-            # TODO: controllare se entriamo in questo caso e commentare
+            
             # Le situazioni possibili sono 3:
             # - Stiamo decelerando per fermarci ad un semaforo e un pedone attraversa tra noi e il semaforo;
             #   in questo caso ci dobbiamo fermare prima del pedone per non investirlo

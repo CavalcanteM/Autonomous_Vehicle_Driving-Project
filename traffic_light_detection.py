@@ -152,7 +152,7 @@ class TrafficLightDetection:
             self._num_go = 0
             self._num_stop = 0
 
-            # TODO:
+            # Se per 3 volte affermiamo di non aver visto un semaforo, il veicolo può proseguire il tragitto o ripartire se fermo
             if self._missdetection_repetition == 3:
                 self._missdetection_repetition = 0
                 return False, boxes, True
@@ -171,7 +171,7 @@ class TrafficLightDetection:
             ymax = self.camera_height*self._prev_semaphore_box.ymax
             prop = self._prev_semaphore_box.xmin
             
-            # 45:1=alfa:prop   -> alfa = prop*90 - 45 
+             
 
             w = (xmax-xmin)
             xmin = xmin - 4*w
@@ -200,11 +200,11 @@ class TrafficLightDetection:
             depth = depth_data[y][x] * 1000  # Consider depth in meters  
 
             if depth != 1000.0 and prop > 0.5:
-                # TODO:
                 # dato che il semaforo si trova alla nostra destra, le misure
                 # della depth, che sono considerate rispetto alla posizione della camera,
                 # richiedono una proiezione della depth del semaforo sull'asse centrale dell'immagine
-                alpha = prop * 90 - 45
+                # alfa = prop*90 - 45, vedi paragrafo 2.2 della documentazione
+                alpha = prop * 90 - 45          
                 alpha = alpha / 180 * pi
                 depth = depth * cos(alpha)
                 
