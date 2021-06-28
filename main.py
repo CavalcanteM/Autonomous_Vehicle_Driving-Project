@@ -47,12 +47,12 @@ import logging
 ###############################################################################
 # CONFIGURABLE PARAMENTERS DURING EXAM
 ###############################################################################
-PLAYER_START_INDEX     = 63         # spawn index for player
-DESTINATION_INDEX      = 50        # setting a destination
-NUM_PEDESTRIANS        = 100        # total number of pedestrians to spawn
-NUM_VEHICLES           = 100        # total number of vehicles to spawn
+PLAYER_START_INDEX     = 89         # spawn index for player
+DESTINATION_INDEX      = 96        # setting a destination
+NUM_PEDESTRIANS        = 250        # total number of pedestrians to spawn
+NUM_VEHICLES           = 80        # total number of vehicles to spawn
 SEED_PEDESTRIANS       = 2021          # seed for pedestrian spawn randomizer
-SEED_VEHICLES          = 952         # seed for vehicle spawn randomizer
+SEED_VEHICLES          = 2021         # seed for vehicle spawn randomizer
 ###############################################################################àà
 
 ITER_FOR_SIM_TIMESTEP  = 10     # no. iterations to compute approx sim timestep
@@ -970,7 +970,7 @@ def exec_waypoint_nav_demo(args):
                             lead_car_yaw.append(agent.vehicle.transform.rotation.yaw * pi / 180)
 
                             prev_lead.add(agent.id)
-                        # TODO: controllare se tenere o meno
+                        
                         else:   # Il veicolo non si muove, ostacolo
                             obstacle_car_pos.append(agent.vehicle)
                     else:   # Il veicolo era un lead vehicle al ciclo precedente
@@ -994,7 +994,7 @@ def exec_waypoint_nav_demo(args):
                             or (abs(sin(current_yaw)) > DIRECTION_SCORE and not (pedestrian_y < current_y + HALF_LANE_WIDTH and pedestrian_y > current_y - HALF_LANE_WIDTH))):
                             pedestrian_pos.append(agent.pedestrian)
 
-            # TODO: controllare se tenere o meno
+            
             # Transform obstacles to world
             obstacles_box_pts = []
             for index in range(len(obstacle_car_pos)):
@@ -1060,7 +1060,7 @@ def exec_waypoint_nav_demo(args):
                 paths = local_planner.transform_paths(paths, ego_state)
 
                 # EditGroup2
-                # TODO: check
+                
                 # Effettuiamo il check delle collisioni tra veicolo e veicoli sempre fermi.
                 collision_check_array = lp._collision_checker.collision_check(paths, obstacles_box_pts)
                 
